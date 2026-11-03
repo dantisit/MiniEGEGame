@@ -1,0 +1,13 @@
+{
+  "name": "mini-ege-game",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Тренажёр правописания слов из списка к заданию 9 ЕГЭ",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}

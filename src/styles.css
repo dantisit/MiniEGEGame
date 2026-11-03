@@ -1,0 +1,79 @@
+* { box-sizing: border-box; }
+body { margin: 0; padding: 15px; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; background: #f8f9fa; }
+.container { width: 100%; max-width: 800px; margin: 0 auto; }
+header { text-align: center; margin-bottom: 20px; padding: 15px; color: #fff; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+h1 { font-size: 1.5rem; margin: 0 0 8px; }
+h2 { font-size: 1.2rem; margin: 0 0 15px; }
+h3 { margin: 0 0 14px; font-size: 1.1rem; }
+p { margin: 0 0 12px; }
+.stats { display: flex; justify-content: space-between; margin-top: 15px; font-size: .9rem; color: rgba(255,255,255,.9); }
+.progress-bar { height: 6px; margin: 10px 0; border-radius: 3px; overflow: hidden; background: rgba(255,255,255,.3); }
+.progress { width: 0; height: 100%; background: white; transition: width .3s ease; }
+.tabs { display: flex; margin-bottom: 20px; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+.tab { flex: 1; border: 0; border-radius: 0; padding: 12px; background: #e9ecef; color: #333; font-weight: 500; cursor: pointer; box-shadow: none; }
+.tab.active { background: #6a11cb; color: white; }
+.tab-content[hidden] { display: none; }
+.panel { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+.training-settings { margin-bottom: 20px; }
+.settings-options { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+.settings-options label { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.settings-options input { width: 18px; height: 18px; margin: 0; accent-color: #6a11cb; }
+.instructions { margin-bottom: 20px; font-size: .95rem; text-align: center; }
+.word { margin: 18px 0; padding: 12px 15px; border-radius: 8px; border: 1px solid #e9ecef; background: white; text-align: center; font-size: 1.4rem; letter-spacing: .04em; transition: background .2s; }
+.word-line { display: flex; align-items: baseline; justify-content: center; flex-wrap: wrap; }
+.word-hint { width: 100%; margin: 8px 0 0; color: #6c757d; font-style: italic; font-size: .9rem; letter-spacing: normal; }
+.word-correct { background: #d4edda; border-color: #c3e6cb; }
+.word-incorrect { background: #f8d7da; border-color: #f5c6cb; }
+.choices { display: inline-flex; align-items: center; margin: 0 5px; }
+.ending { min-width: 32px; padding: 2px 5px; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.ending.selected { color: #3498db; font-weight: bold; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.ending.correct { color: #177c3f; font-weight: bold; }
+.ending.incorrect { color: #b72832; font-weight: bold; }
+.ending:disabled { cursor: default; opacity: 1; }
+.separator { color: #6c757d; }
+.answer-input, .search-input, .dictionary-form input { width: 100%; border: 1px solid #ced4da; border-radius: 8px; padding: 11px 12px; font: inherit; background: #fff; color: #333; }
+.answer-input { display: block; max-width: 360px; margin: 10px auto 0; font-size: 1.05rem; letter-spacing: normal; }
+.answer-input:disabled { opacity: 1; color: #333; background: #fff; }
+.mask-prompt { font-size: 1.4rem; letter-spacing: .12em; font-weight: 600; }
+.answer-feedback { margin: 8px 0 0; font-size: .94rem; letter-spacing: normal; }
+.buttons { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+button { font: inherit; cursor: pointer; }
+.buttons button { flex: 1 1 150px; padding: 16px 10px; font-size: 1.02rem; font-weight: 600; border: 0; border-radius: 10px; color: #fff; box-shadow: 0 3px 6px rgba(0,0,0,.1); transition: transform .2s, box-shadow .2s; }
+button:not(:disabled):active { transform: translateY(2px); }
+button:disabled { cursor: not-allowed; opacity: .48; }
+button:focus-visible, input:focus-visible { outline: 3px solid #ffbf47; outline-offset: 2px; }
+.primary { background: #3498db; }.success { background: #2ecc71; }.purple { background: #9b59b6; }.orange { background: #e67e22; }
+.result { margin-top: 16px; padding: 0; text-align: center; font-weight: 600; }
+.result:not(:empty) { padding: 14px; border-radius: 8px; }
+.correct-result { color: #155724; background: #d4edda; }.incorrect-result { color: #721c24; background: #f8d7da; }
+.empty-state { padding: 24px; text-align: center; border: 1px dashed #adb5bd; border-radius: 8px; background: white; }
+.dictionary-title { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.dictionary-title span, .search-info { color: #6c757d; font-size: .9rem; }
+.search-label { display: block; margin-bottom: 5px; font-size: .9rem; }
+.search-info { margin: 8px 0; }
+.dictionary-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0; }
+.control-btn, .word-actions button { padding: 8px 11px; border: 0; border-radius: 6px; background: #e9ecef; color: #343a40; font-size: .85rem; }
+.control-btn.active { background: #6a11cb; color: #fff; }
+.section { margin: 14px 0; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; }
+.section-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 12px; color: white; background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); }
+.section-header.hidden-section { background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%); }
+.section-header strong { margin-right: auto; }.section-header button { padding: 5px 8px; color: #fff; background: rgba(255,255,255,.2); border: 0; border-radius: 4px; }
+.section-content[hidden] { display: none; }
+.dictionary-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid #e9ecef; }
+.dictionary-item:last-child { border: 0; }.dictionary-item.hidden-word { opacity: .64; }
+.dictionary-item small { display: block; color: #6c757d; }.word-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.reset-btn, .add-word-btn { display: block; width: 100%; padding: 12px; border: 0; border-radius: 8px; color: #fff; font-weight: 600; }
+.reset-btn { margin-top: 18px; background: #e74c3c; }.add-word-btn { margin-top: 16px; background: #3498db; }
+.dictionary-form { margin-top: 24px; padding-top: 20px; border-top: 1px solid #e9ecef; }
+.dictionary-form label { display: block; margin: 10px 0 4px; font-size: .9rem; }.dictionary-form #formMessage { margin: 8px 0 0; font-size: .9rem; }
+dialog.modal-content { position: fixed; width: min(92vw, 670px); max-height: 85vh; overflow: auto; border: 0; border-radius: 12px; padding: 22px; color: #333; box-shadow: 0 14px 40px rgba(0,0,0,.2); }
+dialog::backdrop { background: rgba(0,0,0,.55); }.modal-header { display: flex; justify-content: space-between; align-items: start; gap: 12px; }.modal-header h2 { margin-top: 0; }
+.close-btn { padding: 0 8px; background: none; border: 0; font-size: 1.8rem; line-height: 1; }
+.special-cases-grid, .modes-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin-top: 18px; }
+.special-card, .mode-card { min-height: 100px; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; background: #f8f9fa; text-align: left; }
+.special-card strong, .mode-card strong, .mode-card span { display: block; }.special-card strong { color: #6a11cb; }.special-card span, .mode-card span { margin-top: 6px; font-size: .9rem; color: #555; }
+.mode-card.active { border: 2px solid #6a11cb; background: #f3edfc; }
+@media (max-width: 600px) { .buttons button { flex-basis: calc(50% - 6px); } }
+@media (max-width: 380px) { h1 { font-size: 1.3rem; }.word { font-size: 1.2rem; padding: 10px; }.buttons button { flex-basis: 100%; padding: 14px 8px; font-size: 1rem; }.settings-options { flex-direction: column; gap: 10px; }.dictionary-controls { flex-direction: column; }.dictionary-item { align-items: flex-start; flex-direction: column; }.special-cases-grid, .modes-grid { grid-template-columns: 1fr; } }
+@media (min-width: 768px) { body { padding: 30px; } h1 { font-size: 1.8rem; } .word { font-size: 1.6rem; margin: 20px 0; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; } }
