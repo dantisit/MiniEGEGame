@@ -2,8 +2,16 @@
 (() => {
   'use strict';
   const KEY = 'miniege-spelling-v1';
-  const VOWELS = 'аеёиоуыэюя';
-  const ALTERNATIVES = { а: 'о', о: 'а', е: 'и', и: 'е', ё: 'е', у: 'ю', ю: 'у', ы: 'и', э: 'е', я: 'а' };
+  const wordLookup = new Map(DEFAULT_WORDS.map(item => [item.word, item]));
+  // Each row is a separate exercise; several rows may train different letters of one word.
+  const defaultExercises = DEFAULT_EXERCISES.map(([word, mask, wrong], index) => ({
+    ...wordLookup.get(word), mask, wrong, id: `pdf-${index}`
+  }));
+  const masksByWord = new Map();
+  defaultExercises.forEach(item => {
+    if (!masksByWord.has(item.word)) masksByWord.set(item.word, []);
+    masksByWord.get(item.word).push(item.mask);
+  });
   const SPECIAL = [
     ['Серия мероприятий перед выборами.', 'кампания', 'Мероприятие, серия действий.'],
     ['Группа друзей или фирма.', 'компания', 'Группа людей или фирма.'],
@@ -26,16 +34,11 @@
   const allWords = () => DEFAULT_WORDS.concat(state.custom);
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* Storage can be disabled. The current session still works. */ } };
   const normalize = text => text.trim().toLocaleLowerCase('ru');
-  function position(item) {
-    if (Number.isInteger(item.position)) return item.position;
-    if (['кампания', 'компания', 'касатка', 'косатка'].includes(item.word)) return 1;
-    const chars = [...item.word];
-    const index = chars.findIndex((ch, i) => i >= 2 && VOWELS.includes(ch));
-    return index >= 0 ? index : chars.findIndex(ch => VOWELS.includes(ch));
-  }
   function exercise(item) {
-    const chars = [...item.word], index = position(item);
-    return { item, index, letter: chars[index], wrong: item.wrong || ALTERNATIVES[chars[index]], before: chars.slice(0, index).join(''), after: chars.slice(index + 1).join(''), writeMask: chars.map(c => VOWELS.includes(c) ? '_' : c).join('') };
+    const mask = item.mask || [...item.word].map((char, index) => index === item.position ? '_' : char).join('');
+    const index = mask.indexOf('_');
+    const chars = [...item.word];
+    return { item, index, letter: chars[index], wrong: item.wrong, before: chars.slice(0, index).join(''), after: chars.slice(index + 1).join(''), writeMask: mask };
   }
   function shuffle(values) {
     const result = [...values];
@@ -50,7 +53,7 @@
     const includeCustom = $('includeCustomWords').checked;
     const includeStandard = $('includeStandardWords').checked;
     const includeSections = $('includeHiddenSections').checked;
-    return allWords().filter(item =>
+    return defaultExercises.concat(state.custom.map(item => ({ ...item, id: `custom-${item.word}` }))).filter(item =>
       (includeHidden || !state.hidden.includes(item.word)) &&
       (includeSections || !state.hiddenSections.includes(item.section)) &&
       (item.custom ? includeCustom : includeStandard)
@@ -72,13 +75,20 @@
   }
   function showNext() {
     const available = eligible();
-    const keys = new Set(available.map(x => x.word));
-    deck = deck.filter(word => keys.has(word));
-    if (!deck.length) deck = shuffle(available.map(x => x.word));
-    const count = Math.min(4, available.length);
-    const selected = deck.splice(0, count);
-    const lookup = new Map(available.map(x => [x.word, x]));
-    current = selected.map(word => exercise(lookup.get(word)));
+    const keys = new Set(available.map(item => item.id));
+    deck = deck.filter(id => keys.has(id));
+    if (!deck.length) deck = shuffle(available.map(item => item.id));
+    const count = Math.min(4, new Set(available.map(item => item.word)).size);
+    const lookup = new Map(available.map(item => [item.id, item]));
+    const selected = [];
+    const usedWords = new Set();
+    for (let i = 0; i < deck.length && selected.length < count;) {
+      const item = lookup.get(deck[i]);
+      if (usedWords.has(item.word)) { i++; continue; }
+      selected.push(deck.splice(i, 1)[0]);
+      usedWords.add(item.word);
+    }
+    current = selected.map(id => exercise(lookup.get(id)));
     answers = Array(current.length).fill(null);
     checked = false;
     $('result').textContent = '';
@@ -87,7 +97,7 @@
     $('nextBtn').disabled = true;
     $('instructions').textContent = state.mode === 'choice'
       ? 'Выберите правильную букву в каждом слове. Затем нажмите «Проверить».'
-      : 'Восстановите слова по согласным и количеству пропущенных гласных. Затем нажмите «Проверить».';
+      : 'Впишите слова целиком по показанным пропускам. Затем нажмите «Проверить».';
     const box = $('wordsContainer');
     box.replaceChildren();
     if (!current.length) {
@@ -202,6 +212,8 @@
         const row = element('div', 'dictionary-item' + (state.hidden.includes(item.word) ? ' hidden-word' : ''));
         const text = element('div');
         text.append(element('strong', '', item.word));
+        const masks = item.custom ? [[...item.word].map((char, index) => index === item.position ? '_' : char).join('')] : masksByWord.get(item.word);
+        text.append(element('small', '', `Пропуски: ${masks.join(', ')}`));
         const details = [item.custom ? 'Пользовательское' : '', item.hint || ''].filter(Boolean).join(' · ');
         if (details) text.append(element('small', '', details));
         const actions = element('div', 'word-actions');
@@ -228,7 +240,6 @@
     if (!/^[а-яё]+$/u.test(word)) error = 'Слово должно состоять из русских букв.';
     else if (allWords().some(item => normalize(item.word) === word)) error = 'Это слово уже есть в словаре.';
     else if ((mask.match(/_/g) || []).length !== 1 || [...mask].length !== [...word].length || [...mask].some((ch, i) => i !== index && ch !== [...word][i])) error = 'Маска должна совпадать со словом, кроме одной буквы «_».';
-    else if (!VOWELS.includes([...word][index])) error = 'Пропуск должен стоять на месте гласной.';
     else if (!/^[а-яё]$/u.test(wrong) || wrong === [...word][index]) error = 'Неверный вариант должен быть другой русской буквой.';
     else if (['кампания', 'компания', 'касатка', 'косатка'].includes(word) && !hint) error = 'Для этого слова нужен контекст, различающий значения.';
     $('formMessage').textContent = error || `Слово «${word}» добавлено.`;
