@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#6a11cb">
+  <title>Правописание слов — тренажёр</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Правописание слов. Задание 9</h1>
+      <div class="stats"><span id="score">Решено: 0/0</span><span id="percentage">0%</span></div>
+      <div class="progress-bar" role="progressbar" aria-label="Доля правильных ответов" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressTrack"><div class="progress" id="progressBar"></div></div>
+    </header>
+
+    <nav class="tabs" aria-label="Разделы">
+      <button class="tab active" type="button" data-tab="training" aria-selected="true">Тренировка</button>
+      <button class="tab" type="button" data-tab="dictionary" aria-selected="false">Словарь</button>
+    </nav>
+
+    <main>
+      <section class="tab-content active" id="training-tab" aria-label="Тренировка">
+        <div class="training-settings panel">
+          <h2>Настройки тренировки</h2>
+          <div class="settings-options">
+            <label><input type="checkbox" id="includeHiddenWords" checked> Включать скрытые слова</label>
+            <label><input type="checkbox" id="includeCustomWords" checked> Включать пользовательские слова</label>
+            <label><input type="checkbox" id="includeStandardWords" checked> Включать стандартные слова</label>
+            <label><input type="checkbox" id="includeHiddenSections" checked> Включать скрытые разделы</label>
+          </div>
+        </div>
+        <p class="instructions" id="instructions">Выберите правильную букву в каждом слове. Затем нажмите «Проверить».</p>
+        <div id="wordsContainer" class="words-container"></div>
+        <div class="buttons">
+          <button type="button" id="checkBtn" class="primary" disabled>Проверить</button>
+          <button type="button" id="nextBtn" class="success" disabled>Продолжить</button>
+          <button type="button" id="specialCasesBtn" class="purple">Особые случаи</button>
+          <button type="button" id="modeBtn" class="orange">Выбрать режим</button>
+        </div>
+        <div id="result" class="result" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="tab-content" id="dictionary-tab" aria-label="Словарь" hidden>
+        <div class="panel dictionary-container">
+          <div class="dictionary-title"><h2>Словарь</h2><span id="dictionaryCount"></span></div>
+          <label class="search-label" for="dictionarySearch">Поиск по словарю</label>
+          <input type="search" id="dictionarySearch" class="search-input" placeholder="Поиск по словарю..." autocomplete="off">
+          <p class="search-info" id="searchInfo"></p>
+          <div class="dictionary-controls">
+            <button type="button" class="control-btn" id="showAllBtn">Показать все</button>
+            <button type="button" class="control-btn" id="showHiddenBtn">Только скрытые</button>
+            <button type="button" class="control-btn" id="showUserBtn">Только пользовательские</button>
+            <button type="button" class="control-btn" id="toggleSectionsBtn">Свернуть все разделы</button>
+            <button type="button" class="control-btn" id="copyDictionaryBtn">Копировать весь словарь</button>
+          </div>
+          <div id="dictionaryList" class="dictionary-list"></div>
+          <button type="button" class="reset-btn" id="resetDictionaryBtn">Сбросить к стандартному словарю</button>
+          <form id="addWordForm" class="dictionary-form">
+            <h3>Добавить новое слово</h3>
+            <label for="newWord">Правильное слово</label>
+            <input id="newWord" required placeholder="Например: абонемент" pattern="[А-Яа-яЁё]+">
+            <label for="newMask">Слово с одним пропуском (вместо буквы — _)</label>
+            <input id="newMask" required placeholder="Например: аб_немент">
+            <label for="newWrong">Неверная буква для выбора</label>
+            <input id="newWrong" required maxlength="1" placeholder="Например: а">
+            <label for="newHint">Подсказка / контекст (необязательно)</label>
+            <input id="newHint" placeholder="Например: билет на несколько посещений">
+            <button type="submit" class="add-word-btn">Добавить слово</button>
+            <p id="formMessage" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="specialCasesModal" class="modal-content">
+    <div class="modal-header"><h2>Особые случаи</h2><button class="close-btn" type="button" data-close="specialCasesModal" aria-label="Закрыть">×</button></div>
+    <p>Нажмите на карточку, чтобы увидеть написание и значение.</p>
+    <div class="special-cases-grid" id="specialCasesGrid"></div>
+  </dialog>
+  <dialog id="modeModal" class="modal-content">
+    <div class="modal-header"><h2>Выбор режима тренировки</h2><button class="close-btn" type="button" data-close="modeModal" aria-label="Закрыть">×</button></div>
+    <div class="modes-grid" id="modesGrid">
+      <button type="button" class="mode-card" data-mode="choice"><strong>Выбор буквы</strong><span>Выберите верную букву в каждом из четырёх слов.</span></button>
+      <button type="button" class="mode-card" data-mode="write"><strong>Написать слово</strong><span>Восстановите по шаблону слово целиком.</span></button>
+    </div>
+  </dialog>
+
+  <script src="data/words.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
