@@ -10,19 +10,33 @@
 <body>
   <div class="container">
     <header>
-      <h1>Правописание слов. Задание 9</h1>
+      <h1 id="pageTitle">Правописание слов. Задание 9</h1>
       <div class="stats"><span id="score">Решено: 0/0</span><span id="percentage">0%</span></div>
       <div class="progress-bar" role="progressbar" aria-label="Доля правильных ответов" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressTrack"><div class="progress" id="progressBar"></div></div>
+      <button type="button" id="headerModeBtn" class="header-mode-button" aria-label="Открыть выбор режима"></button>
     </header>
 
-    <nav class="tabs" aria-label="Разделы">
+    <nav class="tabs" id="appTabs" aria-label="Разделы" hidden>
       <button class="tab active" type="button" data-tab="training" aria-selected="true">Тренировка</button>
       <button class="tab" type="button" data-tab="dictionary" aria-selected="false">Словарь</button>
       <button class="tab" type="button" data-tab="statistics" aria-selected="false">Статистика</button>
     </nav>
 
     <main>
-      <section class="tab-content active" id="training-tab" aria-label="Тренировка">
+      <section id="mode-select-tab" class="panel mode-selection" aria-labelledby="modeSelectionTitle">
+        <h2 id="modeSelectionTitle" tabindex="-1">Выберите режим тренировки</h2>
+        <p>Выберите тему и начинайте — результаты сохранятся на этом устройстве.</p>
+        <div class="modes-grid" id="modesGrid">
+          <button type="button" class="mode-card" data-mode="choice"><strong>Выбор буквы</strong><span>Правописание слов: выберите верную букву.</span></button>
+          <button type="button" class="mode-card" data-mode="write"><strong>Написать слово</strong><span>Правописание слов: восстановите слово по пропуску.</span></button>
+          <button type="button" class="mode-card" data-mode="accent"><strong>Ударения</strong><span>Нажмите на ударную гласную (слова из mainORF.html).</span></button>
+          <button type="button" class="mode-card" data-mode="plural"><strong>Окончания: именительный падеж</strong><span>Выберите окончание множественного числа (mainTask7.html).</span></button>
+          <button type="button" class="mode-card" data-mode="genitive"><strong>Окончания: родительный падеж</strong><span>Выберите окончание множественного числа (mainTask7.html).</span></button>
+        </div>
+        <button type="button" id="resumeTrainingBtn" class="control-btn resume-training" hidden>Вернуться к тренировке</button>
+      </section>
+
+      <section class="tab-content" id="training-tab" aria-label="Тренировка" hidden>
         <div class="training-settings panel">
           <h2>Настройки тренировки</h2>
           <div class="settings-options">
@@ -104,6 +118,62 @@
           <button type="button" class="reset-btn" id="resetStatisticsBtn">Сбросить статистику</button>
         </div>
       </section>
+
+      <section class="tab-content" id="extra-training-tab" aria-label="Дополнительная тренировка" hidden>
+        <div class="panel training-settings">
+          <h2 id="extraTrainingTitle">Тренировка</h2>
+          <div class="settings-options">
+            <label><input type="checkbox" id="extraIncludeHidden"> Включать скрытые слова</label>
+            <label><input type="checkbox" id="extraIncludeCustom" checked> Включать мои слова</label>
+            <label><input type="checkbox" id="extraIncludeStandard" checked> Включать слова из источника</label>
+          </div>
+        </div>
+        <p id="extraInstructions" class="instructions"></p>
+        <p class="swipe-tip">Свайпните карточку влево или нажмите «Скрыть», чтобы убрать слово из выдачи.</p>
+        <div id="extraWordsContainer" class="words-container"></div>
+        <div class="buttons">
+          <button type="button" id="extraCheckBtn" class="primary" disabled>Проверить</button>
+          <button type="button" id="extraNextBtn" class="success" disabled>Продолжить</button>
+          <button type="button" id="extraModeBtn" class="orange">Выбрать режим</button>
+        </div>
+        <div id="extraResult" class="result" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="tab-content" id="extra-dictionary-tab" aria-label="Словарь дополнительных режимов" hidden>
+        <div class="panel dictionary-container">
+          <div class="dictionary-title"><h2 id="extraDictionaryTitle">Словарь</h2><span id="extraDictionaryCount"></span></div>
+          <label class="search-label" for="extraSearch">Поиск по словарю</label>
+          <input type="search" id="extraSearch" class="search-input" placeholder="Найти слово..." autocomplete="off">
+          <label class="statistics-filter"><input type="checkbox" id="extraOnlyHidden"> Только скрытые</label>
+          <div id="extraDictionaryList" class="dictionary-list"></div>
+          <form id="extraAddForm" class="dictionary-form">
+            <h3>Добавить своё слово</h3>
+            <p id="extraFormHint" class="statistics-note"></p>
+            <label for="extraNewWord">Слово с ударной гласной прописной / основа слова</label>
+            <input type="text" id="extraNewWord" required autocomplete="off">
+            <div id="extraEndingFields">
+              <label for="extraCorrect">Правильное окончание (если нет окончания, введите ▢)</label>
+              <input type="text" id="extraCorrect">
+              <label for="extraWrong">Неправильное окончание (если нет окончания, введите ▢)</label>
+              <input type="text" id="extraWrong">
+            </div>
+            <button type="submit" class="add-word-btn">Добавить</button>
+            <p id="extraFormMessage" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+
+      <section class="tab-content" id="extra-statistics-tab" aria-label="Статистика дополнительных режимов" hidden>
+        <div class="panel statistics-panel">
+          <h2 id="extraStatsTitle">Статистика</h2>
+          <p class="statistics-note">Результаты этого режима сохраняются в браузере. КД = верные ответы ÷ ошибки; без ошибок КД = ∞.</p>
+          <div class="statistics-grid" id="extraStatsSummary"></div>
+          <label class="search-label" for="extraStatsSearch">Найти слово</label>
+          <input type="search" id="extraStatsSearch" class="search-input" placeholder="Найти слово..." autocomplete="off">
+          <div id="extraStatsList" class="exercise-stats-list"></div>
+          <button type="button" id="extraResetStatsBtn" class="reset-btn">Сбросить статистику этого режима</button>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -112,16 +182,11 @@
     <p>Нажмите на карточку, чтобы увидеть написание и значение.</p>
     <div class="special-cases-grid" id="specialCasesGrid"></div>
   </dialog>
-  <dialog id="modeModal" class="modal-content">
-    <div class="modal-header"><h2>Выбор режима тренировки</h2><button class="close-btn" type="button" data-close="modeModal" aria-label="Закрыть">×</button></div>
-    <div class="modes-grid" id="modesGrid">
-      <button type="button" class="mode-card" data-mode="choice"><strong>Выбор буквы</strong><span>Выберите верную букву в каждом из четырёх слов.</span></button>
-      <button type="button" class="mode-card" data-mode="write"><strong>Написать слово</strong><span>Восстановите по шаблону слово целиком.</span></button>
-    </div>
-  </dialog>
 
   <script src="src/data/words.js"></script>
   <script src="src/data/exercises.js"></script>
+  <script src="src/data/extra-modes.js"></script>
+  <script src="src/extra-modes.js"></script>
   <script src="src/app.js"></script>
 </body>
 </html>

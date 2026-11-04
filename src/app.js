@@ -22,11 +22,11 @@
     custom: Array.isArray(saved.custom) ? saved.custom : [],
     hiddenExercises: Array.isArray(saved.hiddenExercises) ? saved.hiddenExercises : [],
     hiddenSections: Array.isArray(saved.hiddenSections) ? saved.hiddenSections : [],
-    mode: saved.mode === 'write' ? 'write' : 'choice',
+    mode: ['choice', 'write', 'accent', 'plural', 'genitive'].includes(saved.mode) ? saved.mode : 'choice',
     stats: saved.stats && Number.isInteger(saved.stats.total) && Number.isInteger(saved.stats.correct) && saved.stats.total >= 0 && saved.stats.correct >= 0 && saved.stats.correct <= saved.stats.total ? saved.stats : { total: 0, correct: 0 },
     exerciseStats: saved.exerciseStats && typeof saved.exerciseStats === 'object' && !Array.isArray(saved.exerciseStats) ? saved.exerciseStats : {}
   };
-  let filter = 'all', collapsed = false, deck = [], current = [], answers = [], checked = false, statsShown = 40;
+  let filter = 'all', collapsed = false, deck = [], current = [], answers = [], checked = false, statsShown = 40, started = false;
   const allWords = () => DEFAULT_WORDS.concat(state.custom);
   const allExercises = () => defaultExercises.concat(state.custom.map(item => ({
     ...item, id: `custom-${item.word}-${item.position}-${item.wrong}`
@@ -68,7 +68,7 @@
     );
   }
   function updateStats() {
-    const { total, correct } = state.stats;
+    const { total, correct } = ['choice', 'write'].includes(state.mode) ? state.stats : ExtraModeApp.summary(state.mode);
     const percent = total ? Math.round(correct * 100 / total) : 0;
     $('score').textContent = `Решено: ${correct}/${total}`;
     $('percentage').textContent = `${percent}%`;
@@ -378,27 +378,52 @@
       button.append(answer); grid.append(button);
     });
   }
-  function updateModes() {
-    document.querySelectorAll('[data-mode]').forEach(button => button.classList.toggle('active', button.dataset.mode === state.mode));
+  const isSpelling = () => state.mode === 'choice' || state.mode === 'write';
+  function showModeSelection() {
+    $('mode-select-tab').hidden = false;
+    $('appTabs').hidden = true;
+    document.querySelectorAll('.tab-content').forEach(section => { section.hidden = true; });
+    $('resumeTrainingBtn').hidden = !started;
+    document.querySelectorAll('[data-mode]').forEach(button => button.classList.toggle('active', button.dataset.mode === state.mode && started));
+    $('modeSelectionTitle').focus();
   }
   function activateTab(name) {
+    $('mode-select-tab').hidden = true;
+    $('appTabs').hidden = false;
     document.querySelectorAll('.tab').forEach(button => {
       const active = button.dataset.tab === name;
       button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active));
     });
-    for (const tab of ['training', 'dictionary', 'statistics']) $(tab + '-tab').hidden = tab !== name;
-    if (name === 'dictionary') renderDictionary();
-    if (name === 'statistics') renderStatistics();
+    document.querySelectorAll('.tab-content').forEach(section => { section.hidden = true; });
+    const id = `${isSpelling() ? '' : 'extra-'}${name}-tab`;
+    $(id).hidden = false;
+    if (name === 'dictionary') (isSpelling() ? renderDictionary() : ExtraModeApp.dictionary());
+    if (name === 'statistics') (isSpelling() ? renderStatistics() : ExtraModeApp.statistics());
   }
+  function chooseMode(mode) {
+    const resume = started && state.mode === mode;
+    state.mode = mode;
+    save();
+    $('pageTitle').textContent = isSpelling() ? 'Правописание слов. Задание 9' :
+      mode === 'accent' ? 'Тренировка ударений' : 'Тренировка окончаний';
+    if (!resume) {
+      if (isSpelling()) { deck = []; showNext(); }
+      else ExtraModeApp.select(mode);
+    }
+    started = true;
+    updateStats();
+    activateTab('training');
+  }
+  ExtraModeApp.init({ updateHeader: updateStats, openSelection: showModeSelection });
+  $('headerModeBtn').addEventListener('click', showModeSelection);
+  $('resumeTrainingBtn').addEventListener('click', () => activateTab('training'));
   $('checkBtn').addEventListener('click', checkAnswers);
   $('nextBtn').addEventListener('click', showNext);
   $('specialCasesBtn').addEventListener('click', () => $('specialCasesModal').showModal());
-  $('modeBtn').addEventListener('click', () => { updateModes(); $('modeModal').showModal(); });
+  $('modeBtn').addEventListener('click', showModeSelection);
   document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => $(button.dataset.close).close()));
   document.querySelectorAll('dialog').forEach(dialog => dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); }));
-  document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => {
-    state.mode = button.dataset.mode; save(); showNext(); $('modeModal').close();
-  }));
+  document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click', () => chooseMode(button.dataset.mode)));
   document.querySelectorAll('.tab').forEach(button => button.addEventListener('click', () => activateTab(button.dataset.tab)));
   for (const id of ['statsSearch', 'statsSort', 'statsOnlyPracticed']) {
     $(id).addEventListener(id === 'statsSearch' ? 'input' : 'change', () => { statsShown = 40; renderStatistics(); });
@@ -425,5 +450,5 @@
     try { await navigator.clipboard.writeText(text); $('searchInfo').textContent = 'Пропуски скопированы в буфер обмена.'; }
     catch { $('searchInfo').textContent = 'Не удалось скопировать. Разрешите доступ к буферу обмена в браузере.'; }
   });
-  specialCases(); updateStats(); showNext();
+  specialCases(); updateStats(); showModeSelection();
 })();

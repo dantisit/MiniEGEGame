@@ -102,3 +102,20 @@ dialog::backdrop { background: rgba(0,0,0,.55); }.modal-header { display: flex; 
 @media (max-width: 380px) { h1 { font-size: 1.3rem; }.word { font-size: 1.2rem; padding: 10px; }.buttons button { flex-basis: 100%; padding: 14px 8px; font-size: 1rem; }.settings-options { flex-direction: column; gap: 10px; }.dictionary-controls { flex-direction: column; }.dictionary-item { align-items: flex-start; flex-direction: column; }.special-cases-grid, .modes-grid { grid-template-columns: 1fr; } }
 @media (min-width: 768px) { body { padding: 30px; } h1 { font-size: 1.8rem; } .word { font-size: 1.6rem; margin: 20px 0; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; } }
+
+/* Экран выбора и доступный с клавиатуры переход по всей шапке. */
+header { position: relative; }
+.header-mode-button { position: absolute; inset: 0; width: 100%; border: 0; border-radius: 12px; background: transparent; }
+.header-mode-button:hover { background: rgba(255,255,255,.08); }
+.header-mode-button:focus-visible { outline: 3px solid #ffbf47; outline-offset: 3px; }
+.tabs[hidden], .mode-selection[hidden], .resume-training[hidden], #extraEndingFields[hidden] { display: none; }
+.mode-selection { margin-bottom: 20px; padding: 24px; }
+.mode-selection > p { color: #6c757d; }
+.mode-selection .modes-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mode-card { cursor: pointer; font: inherit; transition: transform .15s, border-color .15s, box-shadow .15s; }
+.mode-card:hover { border-color: #6a11cb; box-shadow: 0 4px 14px rgba(106,17,203,.12); }
+.mode-card strong { color: #51209d; }
+.resume-training { display: block; margin: 20px auto 0; font-size: 1rem; }
+.accent-vowel { min-width: 28px; margin: 0 1px; border-bottom: 2px solid #b9a3df; border-radius: 0; }
+.accent-vowel.selected { background: #f3edfc; }
+@media (max-width: 600px) { .mode-selection .modes-grid { grid-template-columns: 1fr; } }
