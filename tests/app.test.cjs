@@ -9,11 +9,11 @@ const root = path.resolve(__dirname, '..');
 class LocalResources extends ResourceLoader {
   fetch(url) {
     const pathname = new URL(url).pathname;
-    if (!['/src/app.js', '/src/data/words.js', '/src/data/exercises.js', '/src/styles.css'].includes(pathname)) return null;
+    if (!['/src/app.js', '/src/data/words.js', '/src/data/exercises.js', '/src/data/extra-modes.js', '/src/extra-modes.js', '/src/styles.css'].includes(pathname)) return null;
     return Promise.resolve(readFileSync(path.join(root, pathname)));
   }
 }
-async function openApp(stored = null) {
+async function openApp(stored = null, startMode = null, extraStored = null) {
   const errors = [];
   const console = new VirtualConsole();
   console.on('jsdomError', error => errors.push(error.message));
@@ -27,10 +27,15 @@ async function openApp(stored = null) {
       window.HTMLDialogElement.prototype.close = function () { this.open = false; };
       window.confirm = () => true;
       if (stored) window.localStorage.setItem('miniege-spelling-v1', stored);
+      if (extraStored) window.localStorage.setItem('miniege-extra-v1', extraStored);
     }
   });
   await new Promise(resolve => dom.window.addEventListener('load', resolve, { once: true }));
   assert.deepEqual(errors, []);
+  if (startMode !== false) {
+    const mode = startMode || (stored && JSON.parse(stored).mode) || 'choice';
+    dom.window.document.querySelector(`[data-mode="${mode}"]`).click();
+  }
   return dom;
 }
 
@@ -270,5 +275,126 @@ test('пустая выборка, добавление и фильтрация 
     d.querySelector('#resetDictionaryBtn').click();
     assert.equal(d.querySelectorAll('.dictionary-item').length, 0);
     assert.equal(d.querySelectorAll('.word').length, 0);
+  } finally { dom.window.close(); }
+});
+
+test('при каждом открытии стартует выбор режима, шапка возвращает на него без потери ответа', async () => {
+  const dom = await openApp(JSON.stringify({ mode: 'write', stats: { total: 2, correct: 1 } }), false);
+  try {
+    const d = dom.window.document;
+    assert.equal(d.querySelector('#mode-select-tab').hidden, false);
+    assert.equal(d.querySelector('#appTabs').hidden, true);
+    assert.equal(d.querySelector('#training-tab').hidden, true);
+    assert.equal(d.querySelectorAll('#modesGrid [data-mode]').length, 5);
+    d.querySelector('[data-mode="write"]').click();
+    const input = d.querySelector('.answer-input');
+    input.value = 'тест';
+    input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    d.querySelector('#headerModeBtn').click();
+    assert.equal(d.querySelector('#mode-select-tab').hidden, false);
+    d.querySelector('#resumeTrainingBtn').click();
+    assert.equal(d.querySelector('.answer-input'), input);
+    assert.equal(input.value, 'тест');
+    assert.equal(d.querySelector('#score').textContent, 'Решено: 1/2');
+  } finally { dom.window.close(); }
+});
+
+test('источники новых режимов сохранены: ударные прописные гласные и оба набора окончаний', () => {
+  const data = readFileSync(path.join(root, 'src/data/extra-modes.js'), 'utf8');
+  const extra = vm.runInNewContext(`${data}\nEXTRA_MODES`);
+  assert.equal(extra.accent.length, 201); // одно повторное «красИвее» удалено
+  assert.equal(extra.plural.length, 83);
+  assert.equal(extra.genitive.length, 163);
+  assert.ok(extra.accent.includes('аэропОрты'));
+  assert.ok(extra.accent.includes('отзЫв'));
+  assert.ok(extra.plural.some(item => item.word === 'Бухгалтер' && item.correct === 'Ы'));
+  assert.ok(extra.genitive.some(item => item.word === 'Яблок' && item.correct === '▢'));
+  for (const word of extra.accent) assert.equal([...word].filter(char => 'АЕЁИОУЫЭЮЯ'.includes(char)).length, 1, word);
+});
+
+test('ударения: выбор гласной, проверка, словарь, скрытие и сохранённый КД', async () => {
+  const dom = await openApp(null, 'accent');
+  try {
+    const d = dom.window.document;
+    assert.equal(d.querySelector('#extra-training-tab').hidden, false);
+    assert.equal(d.querySelectorAll('#extraWordsContainer .word').length, 4);
+    d.querySelectorAll('#extraWordsContainer .word').forEach(card => card.querySelector('.accent-vowel').click());
+    d.querySelector('#extraCheckBtn').click();
+    assert.equal(d.querySelector('#score').textContent.split('/')[1], '4');
+    d.querySelector('#extraCheckBtn').click();
+    assert.equal(d.querySelector('#score').textContent.split('/')[1], '4');
+    const ids = Object.keys(JSON.parse(dom.window.localStorage.getItem('miniege-extra-v1')).results);
+    assert.equal(ids.length, 4);
+    d.querySelector('[data-tab="dictionary"]').click();
+    assert.equal(d.querySelector('#extraDictionaryCount').textContent, '201 слов');
+    d.querySelector('#extraSearch').value = 'отзыв';
+    d.querySelector('#extraSearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    assert.equal(d.querySelectorAll('#extraDictionaryList .dictionary-item').length, 2);
+    d.querySelector('#extraDictionaryList .word-actions button').click();
+    d.querySelector('#extraOnlyHidden').checked = true;
+    d.querySelector('#extraOnlyHidden').dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    assert.equal(d.querySelectorAll('#extraDictionaryList .dictionary-item').length, 1);
+    d.querySelector('[data-tab="statistics"]').click();
+    assert.match(d.querySelector('#extraStatsSummary').textContent, /4Ответов/);
+    const stored = dom.window.localStorage.getItem('miniege-extra-v1');
+    const restored = await openApp(null, false, stored);
+    try {
+      assert.equal(restored.window.document.querySelector('#mode-select-tab').hidden, false);
+      restored.window.document.querySelector('[data-mode="accent"]').click();
+      assert.equal(restored.window.document.querySelector('#score').textContent.split('/')[1], '4');
+    } finally { restored.window.close(); }
+  } finally { dom.window.close(); }
+});
+
+test('оба режима окончаний работают отдельно, в том числе пустое окончание', async () => {
+  const dom = await openApp(null, 'plural');
+  try {
+    const d = dom.window.document;
+    assert.equal(d.querySelectorAll('#extraWordsContainer .word').length, 4);
+    d.querySelectorAll('#extraWordsContainer .word').forEach(card => card.querySelector('.ending').click());
+    d.querySelector('#extraCheckBtn').click();
+    assert.equal(d.querySelector('#score').textContent.split('/')[1], '4');
+    d.querySelector('#headerModeBtn').click();
+    d.querySelector('[data-mode="genitive"]').click();
+    assert.equal(d.querySelector('#score').textContent, 'Решено: 0/0');
+    d.querySelector('[data-tab="dictionary"]').click();
+    assert.equal(d.querySelector('#extraDictionaryCount').textContent, '163 слов');
+    d.querySelector('#extraSearch').value = 'яблок';
+    d.querySelector('#extraSearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    assert.equal(d.querySelectorAll('#extraDictionaryList .dictionary-item').length, 1);
+    assert.match(d.querySelector('#extraDictionaryList').textContent, /Правильно: яблок/);
+    assert.match(d.querySelector('#extraDictionaryList').textContent, /неверно: ов/);
+  } finally { dom.window.close(); }
+});
+
+test('своё ударение можно добавить, проверить, скрыть и вернуть из словаря', async () => {
+  const dom = await openApp(null, 'accent');
+  try {
+    const d = dom.window.document;
+    d.querySelector('[data-tab="dictionary"]').click();
+    d.querySelector('#extraNewWord').value = 'тест';
+    d.querySelector('#extraAddForm').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    assert.match(d.querySelector('#extraFormMessage').textContent, /одной заглавной/);
+    d.querySelector('#extraNewWord').value = 'тЕст';
+    d.querySelector('#extraAddForm').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+    assert.equal(d.querySelector('#extraDictionaryCount').textContent, '202 слов');
+    d.querySelector('#extraIncludeStandard').checked = false;
+    d.querySelector('#extraIncludeStandard').dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    d.querySelector('[data-tab="training"]').click();
+    const card = d.querySelector('#extraWordsContainer .word');
+    assert.equal(d.querySelectorAll('#extraWordsContainer .word').length, 1);
+    card.querySelectorAll('.accent-vowel')[0].click();
+    d.querySelector('#extraCheckBtn').click();
+    assert.match(card.textContent, /Правильно: тЕст/);
+    assert.equal(d.querySelector('#score').textContent, 'Решено: 1/1');
+    card.querySelector('.hide-exercise-btn').click();
+    d.querySelector('#extraNextBtn').click();
+    assert.equal(d.querySelectorAll('#extraWordsContainer .word').length, 0);
+    d.querySelector('[data-tab="dictionary"]').click();
+    d.querySelector('#extraSearch').value = 'тест';
+    d.querySelector('#extraSearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    d.querySelector('#extraDictionaryList .word-actions button').click();
+    d.querySelector('[data-tab="training"]').click();
+    assert.equal(d.querySelectorAll('#extraWordsContainer .word').length, 1);
   } finally { dom.window.close(); }
 });

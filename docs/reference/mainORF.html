@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тренировка ударений</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+            padding: 15px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background-color: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-weight: 600;
+        }
+
+        .tab.active {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .screen {
+            display: none;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .instructions {
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .words-container {
+            margin-bottom: 20px;
+        }
+
+        .word {
+            font-size: 1.4rem;
+            margin: 18px 0;
+            padding: 12px 15px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            border: 1px solid #e9ecef;
+            text-align: center;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: nowrap;
+            position: relative;
+        }
+
+        .word:hover {
+            background-color: #f8f9fa;
+        }
+
+        .vowel {
+            display: inline-block;
+            min-width: 24px;
+            text-align: center;
+            padding: 0 2px;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .accented {
+            color: #e74c3c;
+            font-weight: bold;
+            text-decoration: underline;
+            text-decoration-thickness: 2px;
+            text-underline-offset: 4px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 16px 10px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+
+        #checkBtn {
+            background-color: #3498db;
+            color: white;
+        }
+
+        #nextBtn {
+            background-color: #2ecc71;
+            color: white;
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .correct {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .incorrect {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background-color: #e9ecef;
+            border-radius: 3px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .dictionary-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .dictionary-controls input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            min-width: 150px;
+        }
+
+        .dictionary-controls button {
+            padding: 12px 20px;
+            flex: 0 0 auto;
+        }
+
+        .dictionary-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .dictionary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+            cursor: pointer;
+        }
+
+        .dictionary-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .dictionary-item:last-child {
+            border-bottom: none;
+        }
+
+        .dictionary-word {
+            font-size: 1.2rem;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .custom-badge {
+            background-color: #3498db;
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .hidden-word {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+
+        .dictionary-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dictionary-actions button {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+        }
+
+        .edit-form {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+
+        .edit-form h3 {
+            margin-bottom: 10px;
+        }
+
+        .edit-word-display {
+            font-size: 1.4rem;
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            background-color: white;
+            border-radius: 8px;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: nowrap;
+        }
+
+        .search-info {
+            margin: 10px 0;
+            font-size: 0.9rem;
+            color: #6c757d;
+            text-align: center;
+        }
+
+        .reset-dictionary {
+            background-color: #e74c3c;
+            color: white;
+            margin-top: 10px;
+        }
+
+        .training-settings {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .training-settings h3 {
+            margin-bottom: 10px;
+        }
+
+        .settings-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .setting-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .setting-option input {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Адаптация для очень маленьких экранов */
+        @media (max-width: 380px) {
+            .word {
+                font-size: 1.2rem;
+                padding: 10px;
+            }
+
+            button {
+                padding: 14px 8px;
+                font-size: 1rem;
+            }
+
+            h1 {
+                font-size: 1.3rem;
+            }
+
+            .dictionary-controls {
+                flex-direction: column;
+            }
+
+            .settings-options {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+
+        /* Адаптация для планшетов и больших экранов */
+        @media (min-width: 768px) {
+            body {
+                padding: 30px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .word {
+                font-size: 1.6rem;
+                margin: 20px 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Тренировка ударений</h1>
+            <div class="stats">
+                <span id="score">Решено: 0/0</span>
+                <span id="progress">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress" id="progressBar"></div>
+            </div>
+        </header>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="training">Тренировка</div>
+            <div class="tab" data-tab="dictionary">Словарь</div>
+        </div>
+
+        <div id="training-screen" class="screen active">
+            <div class="training-settings">
+                <h3>Настройки тренировки</h3>
+                <div class="settings-options">
+                    <div class="setting-option">
+                        <input type="checkbox" id="includeHiddenWords" checked>
+                        <label for="includeHiddenWords">Включать скрытые слова</label>
+                    </div>
+                    <div class="setting-option">
+                        <input type="checkbox" id="includeCustomWords" checked>
+                        <label for="includeCustomWords">Включать пользовательские слова</label>
+                    </div>
+                    <div class="setting-option">
+                        <input type="checkbox" id="includeStandardWords" checked>
+                        <label for="includeStandardWords">Включать стандартные слова</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="instructions">
+                <p>Нажмите на гласную букву, чтобы поставить ударение. Когда все слова будут готовы, нажмите "Проверить".</p>
+            </div>
+
+            <div class="words-container" id="wordsContainer">
+                <!-- Слова будут добавлены сюда через JavaScript -->
+            </div>
+
+            <div class="buttons">
+                <button id="checkBtn">Проверить</button>
+                <button id="nextBtn" disabled>Продолжить</button>
+            </div>
+
+            <div id="result" class="result"></div>
+        </div>
+
+        <div id="dictionary-screen" class="screen">
+            <div class="instructions">
+                <p>Здесь вы можете просматривать, добавлять и редактировать слова в словаре. Ударение выделяется заглавной буквой.</p>
+            </div>
+
+            <div class="dictionary-controls">
+                <input type="text" id="searchInput" placeholder="Поиск по словарю">
+                <input type="text" id="newWordInput" placeholder="Введите новое слово">
+                <button id="addWordBtn">Добавить</button>
+            </div>
+
+            <div class="search-info" id="searchInfo">
+                <!-- Информация о поиске будет здесь -->
+            </div>
+
+            <div class="dictionary-list" id="dictionaryList">
+                <!-- Словарь будет загружен сюда через JavaScript -->
+            </div>
+
+            <button id="resetDictionaryBtn" class="reset-dictionary">Сбросить к стандартному словарю</button>
+
+            <div id="editForm" class="edit-form" style="display: none;">
+                <h3>Редактирование слова</h3>
+                <div class="edit-word-display" id="editWordDisplay">
+                    <!-- Редактируемое слово будет здесь -->
+                </div>
+                <p>Нажмите на гласную букву, чтобы изменить ударение</p>
+                <div class="buttons">
+                    <button id="saveEditBtn">Сохранить</button>
+                    <button id="cancelEditBtn">Отмена</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация стандартного словаря из предоставленного списка
+        const standardDictionary = [
+            "аэропОрты", "бАнты", "бОроду", "бухгАлтеров", "вероисповЕдание",
+            "водопровОд", "газопровОд", "граждАнство", "дефИс", "дешевИзна",
+            "диспансЕр", "договорЁнность", "докумЕнт", "досУг", "еретИк",
+            "жалюзИ", "знАчимость", "Иксы", "каталОг", "квартАл", "киломЕтр",
+            "кОнусов", "корЫсть", "крАны", "кремЕнь", "лЕкторов", "лОктя",
+            "лыжнЯ", "мЕстностей", "намЕрение", "нарОст", "нЕдруг", "недУг",
+            "некролОг", "нЕнависть", "нефтепровОд", "новостЕй", "нОгтя",
+            "Отзыв", "отзЫв", "Отрочество", "партЕр", "портфЕль", "пОручни",
+            "придАное", "призЫв", "свЁкла", "сирОты", "созЫв", "сосредотОчение",
+            "срЕдства", "стАтуя", "столЯр", "тамОжня", "тОрты", "тУфля",
+            "цемЕнт", "цЕнтнер", "цепОчка", "шАрфы", "шофЁр", "экспЕрт",
+            "вернА", "знАчимый", "красИвее", "кУхонный", "ловкА", "мозаИчный",
+            "оптОвый", "прозорлИвый", "слИвовый", "бралА", "бралАсь", "взялА",
+            "взялАсь", "влилАсь", "ворвалАсь", "воспринЯть", "воссоздалА",
+            "вручИт", "гналА", "гналАсь", "добралА", "добралАсь", "дождалАсь",
+            "дозвонИтся", "дозИровать", "ждалА", "жилОсь", "закУпорить",
+            "занЯть", "заперлА", "запломбировАть", "защемИт", "звалА", "звонИт",
+            "кАшлянуть", "клАла", "клЕить", "крАлась", "кровоточИть", "лгалА",
+            "лилА", "лилАсь", "навралА", "наделИт", "надорвалАсь", "назвалАсь",
+            "накренИтся", "налилА", "нарвалА", "начАть", "обзвонИт", "облегчИть",
+            "облилАсь", "обнялАсь", "обогналА", "ободралА", "ободрИть",
+            "ободрИться", "обострИть", "одолжИть", "озлОбить", "оклЕить",
+            "окружИт", "опОшлить", "освЕдомиться", "отбылА", "отдалА",
+            "откУпорить", "отозвалА", "отозвалАсь", "перезвонИт", "перелилА",
+            "плодоносИть", "пломбировАть", "повторИт", "позвалА", "позвонИт",
+            "полилА", "положИть", "понЯть", "послАла", "прибЫть", "принЯть",
+            "рвалА", "сверлИт", "снялА", "совралА", "создалА", "сорвалА",
+            "сорИт", "убралА", "углубИть", "укрепИт", "чЕрпать", "щемИт",
+            "щЁлкать", "довезЁнный", "зАгнутый", "зАнятый", "зАпертый",
+            "заселЁнный", "кормЯщий", "кровоточАщий", "нажИвший", "налИвший",
+            "нанЯвшийся", "начАвший", "нАчатый", "низведЁнный", "облегчЁнный",
+            "ободрЁнный", "обострЁнный", "отключЁнный", "повторЁнный",
+            "поделЁнный", "понЯвший", "прИнятый", "приручЁнный", "прожИвший",
+            "снятА", "сОгнутый", "углублЁнный", "закУпорив", "начАв",
+            "начАвшись", "отдАв", "поднЯв", "понЯв", "прибЫв", "создАв",
+            "вОвремя", "дОверху", "донЕльзя", "дОнизу", "дОсуха", "зАсветло",
+            "зАтемно", "красИвее", "надОлго", "ненадОлго"
+        ];
+
+        // Преобразование слова в формат для тренировки
+        function parseWord(wordStr, isCustom = false) {
+            // Находим позицию ударной гласной (заглавной буквы)
+            let correctIndex = -1;
+            const letters = wordStr.split('');
+
+            for (let i = 0; i < letters.length; i++) {
+                const letter = letters[i];
+                if (letter === letter.toUpperCase() && 'аеёиоуыэюя'.includes(letter.toLowerCase())) {
+                    correctIndex = i;
+                    break;
+                }
+            }
+
+            // Если ударная гласная не найдена, предполагаем первую гласную
+            if (correctIndex === -1) {
+                for (let i = 0; i < letters.length; i++) {
+                    if ('аеёиоуыэюя'.includes(letters[i].toLowerCase())) {
+                        correctIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            return {
+                word: wordStr.toLowerCase(),
+                correct: correctIndex,
+                display: wordStr,
+                custom: isCustom,
+                hidden: false
+            };
+        }
+
+        // Инициализация словаря
+        let dictionary = [];
+        let recentlyUsedWords = []; // История последних использованных слов
+
+        // Загрузка словаря из localStorage или инициализация стандартным
+        function loadDictionary() {
+            const savedDictionary = localStorage.getItem('accentDictionary');
+            const savedHistory = localStorage.getItem('accentHistory');
+
+            if (savedDictionary) {
+                dictionary = JSON.parse(savedDictionary);
+            } else {
+                // Инициализация стандартным словарем
+                dictionary = standardDictionary.map(wordStr => parseWord(wordStr, false));
+                saveDictionary();
+            }
+
+            if (savedHistory) {
+                recentlyUsedWords = JSON.parse(savedHistory);
+            }
+        }
+
+        // Сохранение словаря в localStorage
+        function saveDictionary() {
+            localStorage.setItem('accentDictionary', JSON.stringify(dictionary));
+            localStorage.setItem('accentHistory', JSON.stringify(recentlyUsedWords));
+        }
+
+        // Переменные для тренировки
+        let currentWords = [];
+        let userAnswers = [];
+        let stats = { total: 0, correct: 0 };
+        let currentEditingWord = null;
+
+        // Функция для обновления статистики
+        function updateStats() {
+            document.getElementById('score').textContent = `Решено: ${stats.correct}/${stats.total}`;
+            const progress = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
+            document.getElementById('progress').textContent = `${progress}%`;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+        }
+
+        // Функция для отображения слов в тренировке
+        function displayTrainingWords() {
+            const container = document.getElementById('wordsContainer');
+            container.innerHTML = '';
+            userAnswers = Array(currentWords.length).fill(null);
+
+            currentWords.forEach((item, index) => {
+                const wordDiv = document.createElement('div');
+                wordDiv.className = 'word';
+                wordDiv.dataset.index = index;
+
+                // Разбиваем слово на буквы
+                const letters = item.word.split('');
+
+                letters.forEach((letter, letterIndex) => {
+                    const span = document.createElement('span');
+                    span.textContent = letter;
+
+                    // Проверяем, является ли буква гласной
+                    if ('аеёиоуыэюя'.includes(letter.toLowerCase())) {
+                        span.className = 'vowel';
+                        span.dataset.index = letterIndex;
+                        span.addEventListener('click', function() {
+                            setAccent(this, index);
+                        });
+                    }
+
+                    wordDiv.appendChild(span);
+                });
+
+                container.appendChild(wordDiv);
+            });
+        }
+
+        // Функция для установки ударения в тренировке
+        function setAccent(element, wordIndex) {
+            // Снимаем ударение со всех гласных в этом слове
+            const wordElement = document.querySelector(`.word[data-index="${wordIndex}"]`);
+            const vowels = wordElement.querySelectorAll('.vowel');
+            vowels.forEach(vowel => {
+                vowel.classList.remove('accented');
+            });
+
+            // Ставим ударение на выбранную гласную
+            element.classList.add('accented');
+
+            // Сохраняем ответ пользователя
+            userAnswers[wordIndex] = parseInt(element.dataset.index);
+
+            // Проверяем, все ли слова имеют ударение
+            checkAllAccentsSet();
+        }
+
+        // Проверка, все ли слова имеют ударение
+        function checkAllAccentsSet() {
+            const allSet = userAnswers.every(answer => answer !== null);
+            document.getElementById('checkBtn').disabled = !allSet;
+        }
+
+        // Функция для проверки ответов в тренировке
+        function checkAnswers() {
+            let allCorrect = true;
+            const resultDiv = document.getElementById('result');
+
+            currentWords.forEach((item, index) => {
+                const wordElement = document.querySelector(`.word[data-index="${index}"]`);
+
+                if (userAnswers[index] === item.correct) {
+                    // Правильный ответ
+                    wordElement.style.backgroundColor = '#d4edda';
+                    wordElement.style.borderColor = '#c3e6cb';
+                } else {
+                    // Неправильный ответ
+                    wordElement.style.backgroundColor = '#f8d7da';
+                    wordElement.style.borderColor = '#f5c6cb';
+                    allCorrect = false;
+
+                    // Показываем правильное ударение
+                    const vowels = wordElement.querySelectorAll('.vowel');
+                    vowels.forEach(vowel => {
+                        if (parseInt(vowel.dataset.index) === item.correct) {
+                            vowel.style.color = '#28a745';
+                            vowel.style.fontWeight = 'bold';
+                        }
+                    });
+                }
+            });
+
+            // Обновляем статистику
+            stats.total += currentWords.length;
+            if (allCorrect) {
+                stats.correct += currentWords.length;
+                resultDiv.textContent = 'Поздравляем! Все ударения расставлены правильно!';
+                resultDiv.className = 'result correct';
+            } else {
+                // Подсчитываем только правильные ответы
+                const correctCount = currentWords.reduce((count, item, index) => {
+                    return count + (userAnswers[index] === item.correct ? 1 : 0);
+                }, 0);
+                stats.correct += correctCount;
+
+                resultDiv.textContent = `Есть ошибки. Правильных ответов: ${correctCount} из ${currentWords.length}.`;
+                resultDiv.className = 'result incorrect';
+            }
+
+            updateStats();
+
+            // Активируем кнопку "Продолжить"
+            document.getElementById('nextBtn').disabled = false;
+            document.getElementById('checkBtn').disabled = true;
+        }
+
+        // Функция для выбора новых слов для тренировки
+        function selectTrainingWords() {
+            // Получаем настройки тренировки
+            const includeHiddenWords = document.getElementById('includeHiddenWords').checked;
+            const includeCustomWords = document.getElementById('includeCustomWords').checked;
+            const includeStandardWords = document.getElementById('includeStandardWords').checked;
+
+            // Добавляем текущие слова в историю
+            currentWords.forEach(word => {
+                recentlyUsedWords.push(word.word);
+            });
+
+            // Ограничиваем историю 8 словами (2 итерации по 4 слова)
+            if (recentlyUsedWords.length > 8) {
+                recentlyUsedWords = recentlyUsedWords.slice(-8);
+            }
+
+            // Фильтруем слова по настройкам
+            let availableWords = dictionary.filter(item => {
+                // Проверяем, скрыто ли слово
+                if (item.hidden && !includeHiddenWords) return false;
+
+                // Проверяем тип слова
+                if (item.custom && !includeCustomWords) return false;
+                if (!item.custom && !includeStandardWords) return false;
+
+                // Исключаем слова из последних 2 итераций
+                return !recentlyUsedWords.includes(item.word);
+            });
+
+            // Если доступных слов меньше 4, добавляем слова из всего словаря
+            if (availableWords.length < 4) {
+                availableWords = dictionary.filter(item => {
+                    // Проверяем, скрыто ли слово
+                    if (item.hidden && !includeHiddenWords) return false;
+
+                    // Проверяем тип слова
+                    if (item.custom && !includeCustomWords) return false;
+                    if (!item.custom && !includeStandardWords) return false;
+
+                    return true;
+                });
+            }
+
+            // Выбираем случайные 4 слова
+            const shuffled = [...availableWords].sort(() => 0.5 - Math.random());
+            currentWords = shuffled.slice(0, 4);
+
+            displayTrainingWords();
+            document.getElementById('result').textContent = '';
+            document.getElementById('result').className = 'result';
+            document.getElementById('nextBtn').disabled = true;
+            document.getElementById('checkBtn').disabled = true;
+
+            // Сохраняем историю
+            saveDictionary();
+        }
+
+        // Функция для отображения словаря
+        function displayDictionary(searchTerm = '') {
+            const container = document.getElementById('dictionaryList');
+            container.innerHTML = '';
+
+            let filteredDictionary = dictionary;
+            let searchInfo = '';
+
+            if (searchTerm) {
+                filteredDictionary = dictionary.filter(item =>
+                    item.word.includes(searchTerm.toLowerCase()) ||
+                    item.display.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+                searchInfo = `Найдено слов: ${filteredDictionary.length}`;
+            } else {
+                searchInfo = `Всего слов в словаре: ${dictionary.length}`;
+            }
+
+            document.getElementById('searchInfo').textContent = searchInfo;
+
+            filteredDictionary.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'dictionary-item';
+                if (item.hidden) {
+                    div.classList.add('hidden-word');
+                }
+
+                const wordDiv = document.createElement('div');
+                wordDiv.className = 'dictionary-word';
+
+                const wordText = document.createElement('span');
+                wordText.textContent = item.display;
+                wordDiv.appendChild(wordText);
+
+                if (item.custom) {
+                    const customBadge = document.createElement('span');
+                    customBadge.className = 'custom-badge';
+                    customBadge.textContent = 'пользовательское';
+                    wordDiv.appendChild(customBadge);
+                }
+
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'dictionary-actions';
+
+                const hideBtn = document.createElement('button');
+                hideBtn.textContent = item.hidden ? 'Показать' : 'Скрыть';
+                hideBtn.style.backgroundColor = item.hidden ? '#2ecc71' : '#f39c12';
+                hideBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleWordVisibility(index);
+                });
+
+                const editBtn = document.createElement('button');
+                editBtn.textContent = 'Изменить';
+                editBtn.style.backgroundColor = '#3498db';
+                editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    editWord(index);
+                });
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Удалить';
+                deleteBtn.style.backgroundColor = '#e74c3c';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteWord(index);
+                });
+
+                actionsDiv.appendChild(hideBtn);
+                actionsDiv.appendChild(editBtn);
+
+                // Удалять можно только пользовательские слова
+                if (item.custom) {
+                    actionsDiv.appendChild(deleteBtn);
+                }
+
+                div.appendChild(wordDiv);
+                div.appendChild(actionsDiv);
+
+                container.appendChild(div);
+            });
+        }
+
+        // Функция для переключения видимости слова
+        function toggleWordVisibility(index) {
+            dictionary[index].hidden = !dictionary[index].hidden;
+            saveDictionary();
+            displayDictionary(document.getElementById('searchInput').value);
+        }
+
+        // Функция для добавления нового слова
+        function addNewWord() {
+            const input = document.getElementById('newWordInput');
+            const wordStr = input.value.trim();
+
+            if (wordStr === '') {
+                alert('Пожалуйста, введите слово');
+                return;
+            }
+
+            // Проверяем, есть ли уже такое слово в словаре
+            const normalizedWord = wordStr.toLowerCase();
+            if (dictionary.some(item => item.word === normalizedWord)) {
+                alert('Это слово уже есть в словаре');
+                return;
+            }
+
+            // Добавляем слово с ударением на первую гласную
+            const newWord = parseWord(wordStr, true);
+            dictionary.push(newWord);
+            saveDictionary();
+            displayDictionary();
+
+            input.value = '';
+
+            // Показываем форму редактирования для нового слова
+            editWord(dictionary.length - 1);
+        }
+
+        // Функция для редактирования слова
+        function editWord(index) {
+            currentEditingWord = index;
+            const word = dictionary[index];
+
+            // Показываем форму редактирования
+            const editForm = document.getElementById('editForm');
+            editForm.style.display = 'block';
+
+            // Отображаем слово для редактирования
+            const displayElement = document.getElementById('editWordDisplay');
+            displayElement.innerHTML = '';
+
+            const letters = word.word.split('');
+            letters.forEach((letter, letterIndex) => {
+                const span = document.createElement('span');
+                span.textContent = letterIndex === word.correct ? letter.toUpperCase() : letter;
+
+                // Проверяем, является ли буква гласной
+                if ('аеёиоуыэюя'.includes(letter.toLowerCase())) {
+                    span.className = 'vowel';
+                    span.dataset.index = letterIndex;
+                    span.addEventListener('click', function() {
+                        // Обновляем ударение
+                        word.correct = parseInt(this.dataset.index);
+                        updateEditDisplay();
+                    });
+                }
+
+                displayElement.appendChild(span);
+            });
+
+            // Прокручиваем к форме редактирования
+            editForm.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Обновление отображения редактируемого слова
+        function updateEditDisplay() {
+            const word = dictionary[currentEditingWord];
+            const displayElement = document.getElementById('editWordDisplay');
+            displayElement.innerHTML = '';
+
+            const letters = word.word.split('');
+            letters.forEach((letter, letterIndex) => {
+                const span = document.createElement('span');
+                span.textContent = letterIndex === word.correct ? letter.toUpperCase() : letter;
+
+                // Проверяем, является ли буква гласной
+                if ('аеёиоуыэюя'.includes(letter.toLowerCase())) {
+                    span.className = 'vowel';
+                    span.dataset.index = letterIndex;
+                    span.addEventListener('click', function() {
+                        // Обновляем ударение
+                        word.correct = parseInt(this.dataset.index);
+                        updateEditDisplay();
+                    });
+                }
+
+                displayElement.appendChild(span);
+            });
+        }
+
+        // Сохранение изменений слова
+        function saveEditedWord() {
+            const word = dictionary[currentEditingWord];
+
+            // Обновляем отображаемую форму слова
+            word.display = '';
+            const letters = word.word.split('');
+            letters.forEach((letter, index) => {
+                word.display += index === word.correct ? letter.toUpperCase() : letter;
+            });
+
+            saveDictionary();
+            displayDictionary();
+
+            // Скрываем форму редактирования
+            document.getElementById('editForm').style.display = 'none';
+            currentEditingWord = null;
+        }
+
+        // Отмена редактирования
+        function cancelEdit() {
+            // Перезагружаем словарь, чтобы отменить изменения
+            loadDictionary();
+            displayDictionary();
+
+            // Скрываем форму редактирования
+            document.getElementById('editForm').style.display = 'none';
+            currentEditingWord = null;
+        }
+
+        // Удаление слова из словаря
+        function deleteWord(index) {
+            if (confirm('Вы уверены, что хотите удалить это слово из словаря?')) {
+                dictionary.splice(index, 1);
+                saveDictionary();
+                displayDictionary();
+            }
+        }
+
+        // Сброс словаря к стандартному
+        function resetDictionary() {
+            if (confirm('Вы уверены, что хотите сбросить словарь к стандартному? Все ваши изменения будут потеряны.')) {
+                dictionary = standardDictionary.map(wordStr => parseWord(wordStr, false));
+                recentlyUsedWords = [];
+                saveDictionary();
+                displayDictionary();
+                selectTrainingWords();
+            }
+        }
+
+        // Инициализация при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            // Загружаем словарь
+            loadDictionary();
+
+            // Инициализируем тренировку
+            selectTrainingWords();
+            updateStats();
+
+            // Настраиваем обработчики для тренировки
+            document.getElementById('checkBtn').addEventListener('click', checkAnswers);
+            document.getElementById('nextBtn').addEventListener('click', selectTrainingWords);
+
+            // Настраиваем обработчики для словаря
+            document.getElementById('addWordBtn').addEventListener('click', addNewWord);
+            document.getElementById('saveEditBtn').addEventListener('click', saveEditedWord);
+            document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
+            document.getElementById('resetDictionaryBtn').addEventListener('click', resetDictionary);
+
+            // Настраиваем поиск по словарю
+            document.getElementById('searchInput').addEventListener('input', function() {
+                displayDictionary(this.value);
+            });
+
+            // Настраиваем переключение между вкладками
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Убираем активный класс со всех вкладок
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    // Добавляем активный класс к текущей вкладке
+                    this.classList.add('active');
+
+                    // Скрываем все экраны
+                    document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+                    // Показываем соответствующий экран
+                    document.getElementById(`${this.dataset.tab}-screen`).classList.add('active');
+
+                    // При переключении на словарь обновляем его отображение
+                    if (this.dataset.tab === 'dictionary') {
+                        displayDictionary();
+                    }
+                });
+            });
+
+            // Обработка нажатия Enter в поле ввода нового слова
+            document.getElementById('newWordInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addNewWord();
+                }
+            });
+
+            // Обновляем тренировку при изменении настроек
+            document.getElementById('includeHiddenWords').addEventListener('change', selectTrainingWords);
+            document.getElementById('includeCustomWords').addEventListener('change', selectTrainingWords);
+            document.getElementById('includeStandardWords').addEventListener('change', selectTrainingWords);
+        });
+    </script>
+</body>
+</html>
