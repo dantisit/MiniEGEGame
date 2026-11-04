@@ -3,10 +3,14 @@
   'use strict';
   const KEY = 'miniege-spelling-v1';
   const wordLookup = new Map(DEFAULT_WORDS.map(item => [item.word, item]));
+  // Keep old IDs for unchanged rows; revised masks get fresh IDs so results for
+  // a different letter of the same word are not silently carried across.
+  const omittedExercises = new Set(OMITTED_EXERCISE_IDS);
+  const revisedMasks = new Set(REVISED_MASK_IDS);
   // Each row is a separate exercise; several rows may train different letters of one word.
   const defaultExercises = DEFAULT_EXERCISES.map(([word, mask, wrong], index) => ({
-    ...wordLookup.get(word), mask, wrong, id: `pdf-${index}`
-  }));
+    ...wordLookup.get(word), mask, wrong, id: revisedMasks.has(index) ? `pdf-${index}-v2` : `pdf-${index}`
+  })).filter((_, index) => !omittedExercises.has(index));
   const SPECIAL = [
     ['Серия мероприятий перед выборами.', 'кампания', 'Мероприятие, серия действий.'],
     ['Группа друзей или фирма.', 'компания', 'Группа людей или фирма.'],
@@ -14,6 +18,11 @@
     ['Морское млекопитающее из семейства дельфиновых.', 'косатка', 'Морское млекопитающее.']
   ];
   const $ = id => document.getElementById(id);
+  function doubleConsonantGap(word, index) {
+    const chars = [...word], letter = chars[index];
+    return /^[бвгджзйклмнпрстфхцчшщ]$/u.test(letter) &&
+      (chars[index - 1] === letter || chars[index + 1] === letter);
+  }
   function load() {
     try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; }
   }
@@ -29,7 +38,9 @@
   let filter = 'all', collapsed = false, deck = [], current = [], answers = [], checked = false, statsShown = 40, started = false;
   const allWords = () => DEFAULT_WORDS.concat(state.custom);
   const allExercises = () => defaultExercises.concat(state.custom.map(item => ({
-    ...item, id: `custom-${item.word}-${item.position}-${item.wrong}`
+    ...item, wrong: doubleConsonantGap(item.word, item.position) ? '!' : item.wrong,
+    // Existing custom IDs retain their old suffix even if a saved wrong option changes to !.
+    id: `custom-${item.word}-${item.position}-${item.wrong}`
   })));
   // Older versions hid a whole word; keep that choice by hiding each of its exercises.
   if (Array.isArray(saved.hidden)) {
@@ -149,7 +160,7 @@
           const button = element('button', 'ending', letter);
           button.type = 'button';
           button.dataset.value = letter;
-          button.setAttribute('aria-label', `Слово ${i + 1}: выбрать ${letter}`);
+          button.setAttribute('aria-label', `Слово ${i + 1}: выбрать ${letter === '!' ? 'без второй согласной' : letter}`);
           button.addEventListener('click', () => {
             if (checked) return;
             answers[Number(card.dataset.index)] = letter;
@@ -301,7 +312,10 @@
       if (filter === 'user' && !item.custom) return false;
       return !term || [item.word, maskFor(item), item.hint || '', item.section].some(s => normalize(s).includes(term));
     });
-    $('dictionaryCount').textContent = `${allExercises().length} пропусков · ${allWords().length} слов`;
+    const count = allExercises().length;
+    const gapForm = count % 10 === 1 && count % 100 !== 11 ? 'пропуск' :
+      [2, 3, 4].includes(count % 10) && (count % 100 < 12 || count % 100 > 14) ? 'пропуска' : 'пропусков';
+    $('dictionaryCount').textContent = `${count} ${gapForm} · ${new Set(allExercises().map(item => item.word)).size} слов`;
     $('searchInfo').textContent = `Найдено: ${list.length}`;
     for (const [id, value] of [['showAllBtn', 'all'], ['showHiddenBtn', 'hidden'], ['showUserBtn', 'user']]) {
       $(id).classList.toggle('active', filter === value);
@@ -331,7 +345,7 @@
         const row = element('div', 'dictionary-item' + (hidden ? ' hidden-word' : ''));
         const text = element('div');
         text.append(element('strong', '', item.word));
-        text.append(element('small', '', `Пропуск: ${maskFor(item)} · неверная буква: ${item.wrong}`));
+        text.append(element('small', '', `Пропуск: ${maskFor(item)} · неверный вариант: ${item.wrong}`));
         const details = [item.custom ? 'Пользовательское' : '', item.hint || ''].filter(Boolean).join(' · ');
         if (details) text.append(element('small', '', details));
         const actions = element('div', 'word-actions');
@@ -352,18 +366,28 @@
   }
   function addWord(event) {
     event.preventDefault();
-    const word = normalize($('newWord').value), mask = normalize($('newMask').value), wrong = normalize($('newWrong').value), hint = $('newHint').value.trim();
+    const word = normalize($('newWord').value), mask = normalize($('newMask').value), hint = $('newHint').value.trim();
     const index = [...mask].indexOf('_');
+    const wrong = doubleConsonantGap(word, index) ? '!' : normalize($('newWrong').value);
     let error = '';
     if (!/^[а-яё]+$/u.test(word)) error = 'Слово должно состоять из русских букв.';
     else if (allWords().some(item => normalize(item.word) === word)) error = 'Это слово уже есть в словаре.';
     else if ((mask.match(/_/g) || []).length !== 1 || [...mask].length !== [...word].length || [...mask].some((ch, i) => i !== index && ch !== [...word][i])) error = 'Маска должна совпадать со словом, кроме одной буквы «_».';
-    else if (!/^[а-яё]$/u.test(wrong) || wrong === [...word][index]) error = 'Неверный вариант должен быть другой русской буквой.';
+    else if (!doubleConsonantGap(word, index) && (!/^[а-яё]$/u.test(wrong) || wrong === [...word][index])) error = 'Неверный вариант должен быть другой русской буквой.';
     else if (['кампания', 'компания', 'касатка', 'косатка'].includes(word) && !hint) error = 'Для этого слова нужен контекст, различающий значения.';
     $('formMessage').textContent = error || `Слово «${word}» добавлено.`;
     if (error) return;
     state.custom.push({ word, section: 'Мои слова', custom: true, position: index, wrong, ...(hint ? { hint } : {}) });
-    save(); $('addWordForm').reset(); renderDictionary();
+    save(); $('addWordForm').reset(); updateNewWrong(); renderDictionary();
+  }
+  function updateNewWrong() {
+    const word = normalize($('newWord').value), mask = normalize($('newMask').value);
+    const double = mask.indexOf('_') >= 0 && doubleConsonantGap(word, mask.indexOf('_'));
+    const field = $('newWrong');
+    if (double) field.value = '!';
+    else if (field.readOnly) field.value = '';
+    field.readOnly = double;
+    field.placeholder = double ? '!' : 'Например: а';
   }
   function specialCases() {
     const grid = $('specialCasesGrid'); grid.replaceChildren();
@@ -440,6 +464,8 @@
   [['showAllBtn', 'all'], ['showHiddenBtn', 'hidden'], ['showUserBtn', 'user']].forEach(([id, name]) => $(id).addEventListener('click', () => { filter = name; renderDictionary(); }));
   $('toggleSectionsBtn').addEventListener('click', () => { collapsed = !collapsed; renderDictionary(); });
   $('addWordForm').addEventListener('submit', addWord);
+  $('newWord').addEventListener('input', updateNewWrong);
+  $('newMask').addEventListener('input', updateNewWrong);
   $('resetDictionaryBtn').addEventListener('click', () => {
     if (!window.confirm('Удалить пользовательские слова и вернуть скрытые пропуски и разделы? Статистика ответов сохранится.')) return;
     state.custom = []; state.hiddenExercises = []; state.hiddenSections = [];
