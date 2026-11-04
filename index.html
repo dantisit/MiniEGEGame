@@ -18,6 +18,7 @@
     <nav class="tabs" aria-label="Разделы">
       <button class="tab active" type="button" data-tab="training" aria-selected="true">Тренировка</button>
       <button class="tab" type="button" data-tab="dictionary" aria-selected="false">Словарь</button>
+      <button class="tab" type="button" data-tab="statistics" aria-selected="false">Статистика</button>
     </nav>
 
     <main>
@@ -25,13 +26,14 @@
         <div class="training-settings panel">
           <h2>Настройки тренировки</h2>
           <div class="settings-options">
-            <label><input type="checkbox" id="includeHiddenWords" checked> Включать скрытые слова</label>
+            <label><input type="checkbox" id="includeHiddenWords"> Включать скрытые пропуски</label>
             <label><input type="checkbox" id="includeCustomWords" checked> Включать пользовательские слова</label>
             <label><input type="checkbox" id="includeStandardWords" checked> Включать стандартные слова</label>
             <label><input type="checkbox" id="includeHiddenSections" checked> Включать скрытые разделы</label>
           </div>
         </div>
         <p class="instructions" id="instructions">Выберите правильную букву в каждом слове. Затем нажмите «Проверить».</p>
+        <p class="swipe-tip">Свайпните карточку влево, чтобы скрыть этот пропуск. Можно также нажать «Скрыть пропуск».</p>
         <div id="wordsContainer" class="words-container"></div>
         <div class="buttons">
           <button type="button" id="checkBtn" class="primary" disabled>Проверить</button>
@@ -53,7 +55,7 @@
             <button type="button" class="control-btn" id="showHiddenBtn">Только скрытые</button>
             <button type="button" class="control-btn" id="showUserBtn">Только пользовательские</button>
             <button type="button" class="control-btn" id="toggleSectionsBtn">Свернуть все разделы</button>
-            <button type="button" class="control-btn" id="copyDictionaryBtn">Копировать весь словарь</button>
+            <button type="button" class="control-btn" id="copyDictionaryBtn">Копировать все пропуски</button>
           </div>
           <div id="dictionaryList" class="dictionary-list"></div>
           <button type="button" class="reset-btn" id="resetDictionaryBtn">Сбросить к стандартному словарю</button>
@@ -70,6 +72,36 @@
             <button type="submit" class="add-word-btn">Добавить слово</button>
             <p id="formMessage" role="status" aria-live="polite"></p>
           </form>
+        </div>
+      </section>
+
+      <section class="tab-content" id="statistics-tab" aria-label="Статистика" hidden>
+        <div class="panel statistics-panel">
+          <h2>Моя статистика</h2>
+          <p class="statistics-note">Результаты сохраняются в этом браузере на устройстве и не синхронизируются. При очистке данных сайта они исчезнут. Статистика не влияет на случайный выбор слов.</p>
+          <div class="statistics-grid" id="statisticsSummary"></div>
+          <p id="statisticsLegacyNote" class="statistics-note" hidden>Общий счёт из прошлой версии сохранён. Результаты по отдельным пропускам собираются с этого обновления.</p>
+          <section class="statistics-block" aria-labelledby="exerciseStatsTitle">
+            <h3 id="exerciseStatsTitle">Результаты по пропускам</h3>
+            <p class="statistics-note">Каждый пропуск считается отдельно. КД = верные ответы ÷ ошибки; без ошибок КД = ∞, без попыток — «—».</p>
+            <div class="statistics-controls">
+              <label for="statsSearch">Найти слово
+                <input type="search" id="statsSearch" class="search-input" placeholder="Слово или пропуск..." autocomplete="off">
+              </label>
+              <label for="statsSort">Сортировка
+                <select id="statsSort">
+                  <option value="kd-asc">КД: по возрастанию</option>
+                  <option value="kd-desc">КД: по убыванию</option>
+                  <option value="word">По алфавиту</option>
+                </select>
+              </label>
+            </div>
+            <label class="statistics-filter"><input type="checkbox" id="statsOnlyPracticed" checked> Только с попытками</label>
+            <p id="statsResultsCount" class="statistics-note" role="status"></p>
+            <div id="exerciseStatsList" class="exercise-stats-list"></div>
+            <button type="button" id="statsShowMore" class="control-btn stats-more" hidden>Показать ещё</button>
+          </section>
+          <button type="button" class="reset-btn" id="resetStatisticsBtn">Сбросить статистику</button>
         </div>
       </section>
     </main>
