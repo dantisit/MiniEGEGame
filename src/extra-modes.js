@@ -4,6 +4,8 @@
   const KEY = 'miniege-extra-v1';
   const $ = id => document.getElementById(id);
   const VOWELS = 'аеёиоуыэюя';
+  // In accent exercises ё is deliberately shown as е; do not alter the ending modes.
+  const accentE = text => text.replace(/ё/g, 'е').replace(/Ё/g, 'Е');
   const names = {
     accent: 'Ударения',
     plural: 'Окончания: именительный падеж',
@@ -21,7 +23,10 @@
   try { stored = JSON.parse(localStorage.getItem(KEY)) || {}; } catch { stored = {}; }
   const state = {
     hidden: Array.isArray(stored.hidden) ? stored.hidden : [],
-    custom: Array.isArray(stored.custom) ? stored.custom : [],
+    custom: Array.isArray(stored.custom) ? stored.custom.map(item =>
+      item.mode === 'accent' && typeof item.word === 'string'
+        ? { ...item, word: accentE(item.word) }
+        : item) : [],
     results: stored.results && typeof stored.results === 'object' ? stored.results : {}
   };
   let mode = 'accent', deck = [], current = [], answers = [], checked = false, onScore = () => {}, onSelect = () => {};
@@ -184,7 +189,7 @@
     $('extraNextBtn').disabled = false;
   }
   function dictionary() {
-    const term = $('extraSearch').value.trim().toLowerCase();
+    const term = mode === 'accent' ? accentE($('extraSearch').value.trim().toLowerCase()) : $('extraSearch').value.trim().toLowerCase();
     const filtered = items().filter(item =>
       (!term || [item.word, item.hint || '', item.category || ''].some(text => text.toLowerCase().includes(term))) &&
       (!$('extraOnlyHidden').checked || state.hidden.includes(item.id)));
@@ -228,7 +233,7 @@
       const tile = cell('div', 'stat-card');
       tile.append(cell('strong', '', value), cell('span', '', label)); root.append(tile);
     }
-    const search = $('extraStatsSearch').value.trim().toLowerCase();
+    const search = mode === 'accent' ? accentE($('extraStatsSearch').value.trim().toLowerCase()) : $('extraStatsSearch').value.trim().toLowerCase();
     const rows = $('extraStatsList'); rows.replaceChildren();
     const filtered = list.filter(item => {
       const result = record(item);
@@ -252,7 +257,7 @@
     $('extraDictionaryTitle').textContent = `Словарь · ${names[mode]}`;
     $('extraStatsTitle').textContent = `Статистика · ${names[mode]}`;
     $('extraFormHint').textContent = mode === 'accent'
-      ? 'Укажите ровно одну ударную гласную заглавной: звонИт, бАнты. Для окончания используйте другой режим.'
+      ? 'Укажите ровно одну ударную гласную заглавной: звонИт, бАнты. В этом режиме ё заменяется на е.'
       : 'Укажите основу без окончания и два разных варианта окончания; отсутствие окончания обозначьте символом ▢.';
     $('extraEndingFields').hidden = mode === 'accent';
     $('extraCorrect').required = mode !== 'accent';
@@ -267,10 +272,11 @@
     const raw = $('extraNewWord').value.trim();
     let item, error = '';
     if (mode === 'accent') {
-      const letters = [...raw];
+      const normalized = accentE(raw);
+      const letters = [...normalized];
       const indexes = letters.flatMap((letter, i) => VOWELS.includes(letter.toLowerCase()) && letter !== letter.toLowerCase() ? [i] : []);
       if (!/^[А-Яа-яЁё]+$/u.test(raw) || indexes.length !== 1) error = 'Нужно русское слово с одной заглавной ударной гласной.';
-      else item = { word: raw.toLowerCase(), correct: indexes[0] };
+      else item = { word: normalized.toLowerCase(), correct: indexes[0] };
     } else {
       const correct = $('extraCorrect').value.trim().toLowerCase(), incorrect = $('extraWrong').value.trim().toLowerCase();
       if (!/^[а-яё]+$/u.test(raw.toLowerCase())) error = 'Основа должна состоять из русских букв.';
