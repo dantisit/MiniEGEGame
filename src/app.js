@@ -3,14 +3,14 @@
   'use strict';
   const KEY = 'miniege-spelling-v1';
   const wordLookup = new Map(DEFAULT_WORDS.map(item => [item.word, item]));
-  // Keep old IDs for unchanged rows; revised masks get fresh IDs so results for
-  // a different letter of the same word are not silently carried across.
-  const omittedExercises = new Set(OMITTED_EXERCISE_IDS);
-  const revisedMasks = new Set(REVISED_MASK_IDS);
-  // Each row is a separate exercise; several rows may train different letters of one word.
-  const defaultExercises = DEFAULT_EXERCISES.map(([word, mask, wrong], index) => ({
-    ...wordLookup.get(word), mask, wrong, id: revisedMasks.has(index) ? `pdf-${index}-v2` : `pdf-${index}`
-  })).filter((_, index) => !omittedExercises.has(index));
+  // Stable IDs by word and mask: reordering the table does not move saved results
+  // onto a different gap. The new prefix keeps old PDF exercise stats separate.
+  const defaultExercises = DEFAULT_EXERCISES.map(([word, mask, wrong, hidden]) => ({
+    ...wordLookup.get(word), mask,
+    wrong: doubleConsonantGap(word, mask.indexOf('_')) ? '!' : wrong,
+    defaultHidden: Boolean(hidden), id: `table2-${word}-${mask}`
+  }));
+  const defaultHiddenIds = defaultExercises.filter(item => item.defaultHidden).map(item => item.id);
   const SPECIAL = [
     ['Серия мероприятий перед выборами.', 'кампания', 'Мероприятие, серия действий.'],
     ['Группа друзей или фирма.', 'компания', 'Группа людей или фирма.'],
@@ -29,14 +29,18 @@
   const saved = load();
   const state = {
     custom: Array.isArray(saved.custom) ? saved.custom : [],
-    hiddenExercises: Array.isArray(saved.hiddenExercises) ? saved.hiddenExercises : [],
+    hiddenExercises: [...new Set([
+      ...(Array.isArray(saved.hiddenExercises) ? saved.hiddenExercises : []),
+      ...(saved.spellingTableVersion === 2 ? [] : defaultHiddenIds)
+    ])],
+    spellingTableVersion: 2,
     hiddenSections: Array.isArray(saved.hiddenSections) ? saved.hiddenSections : [],
     mode: ['choice', 'write', 'accent', 'plural', 'genitive'].includes(saved.mode) ? saved.mode : 'choice',
     stats: saved.stats && Number.isInteger(saved.stats.total) && Number.isInteger(saved.stats.correct) && saved.stats.total >= 0 && saved.stats.correct >= 0 && saved.stats.correct <= saved.stats.total ? saved.stats : { total: 0, correct: 0 },
     exerciseStats: saved.exerciseStats && typeof saved.exerciseStats === 'object' && !Array.isArray(saved.exerciseStats) ? saved.exerciseStats : {}
   };
   let filter = 'all', collapsed = false, deck = [], current = [], answers = [], checked = false, statsShown = 40, started = false;
-  const allWords = () => DEFAULT_WORDS.concat(state.custom);
+  const allWords = () => defaultExercises.concat(state.custom);
   const allExercises = () => defaultExercises.concat(state.custom.map(item => ({
     ...item, wrong: doubleConsonantGap(item.word, item.position) ? '!' : item.wrong,
     // Existing custom IDs retain their old suffix even if a saved wrong option changes to !.
@@ -50,6 +54,10 @@
   }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* Storage can be disabled. The current session still works. */ } };
   const normalize = text => text.trim().toLocaleLowerCase('ru');
+  function updateRemaining() {
+    const hidden = new Set(state.hiddenExercises);
+    $('remainingCount').textContent = `Не скрыто пропусков: ${allExercises().filter(item => !hidden.has(item.id)).length}`;
+  }
   function maskFor(item) {
     return item.mask || [...item.word].map((char, index) => index === item.position ? '_' : char).join('');
   }
@@ -97,6 +105,7 @@
     const task = current[index];
     if (!task || state.hiddenExercises.includes(task.item.id)) return;
     state.hiddenExercises.push(task.item.id);
+    updateRemaining();
     // A swipe should actually remove the exercise from future rounds even if the user
     // previously opted into showing hidden exercises.
     $('includeHiddenWords').checked = false;
@@ -351,13 +360,13 @@
         const actions = element('div', 'word-actions');
         actions.append(makeButton(hidden ? 'Показать' : 'Скрыть', () => {
           state.hiddenExercises = hidden ? state.hiddenExercises.filter(id => id !== item.id) : [...state.hiddenExercises, item.id];
-          save(); renderDictionary();
+          updateRemaining(); save(); renderDictionary();
         }, hidden ? 'Вернуть этот пропуск в тренировку' : 'Скрыть этот пропуск'));
         if (item.custom) actions.append(makeButton('Удалить', () => {
           if (!window.confirm(`Удалить слово «${item.word}»?`)) return;
           state.custom = state.custom.filter(x => x.word !== item.word);
           state.hiddenExercises = state.hiddenExercises.filter(id => id !== item.id);
-          save(); renderDictionary();
+          updateRemaining(); save(); renderDictionary();
         }));
         row.append(text, actions); content.append(row);
       });
@@ -378,7 +387,7 @@
     $('formMessage').textContent = error || `Слово «${word}» добавлено.`;
     if (error) return;
     state.custom.push({ word, section: 'Мои слова', custom: true, position: index, wrong, ...(hint ? { hint } : {}) });
-    save(); $('addWordForm').reset(); updateNewWrong(); renderDictionary();
+    updateRemaining(); save(); $('addWordForm').reset(); updateNewWrong(); renderDictionary();
   }
   function updateNewWrong() {
     const word = normalize($('newWord').value), mask = normalize($('newMask').value);
@@ -467,14 +476,14 @@
   $('newWord').addEventListener('input', updateNewWrong);
   $('newMask').addEventListener('input', updateNewWrong);
   $('resetDictionaryBtn').addEventListener('click', () => {
-    if (!window.confirm('Удалить пользовательские слова и вернуть скрытые пропуски и разделы? Статистика ответов сохранится.')) return;
-    state.custom = []; state.hiddenExercises = []; state.hiddenSections = [];
-    save(); deck = []; renderDictionary(); showNext();
+    if (!window.confirm('Удалить пользовательские слова и восстановить исходное скрытие пропусков и разделов? Статистика ответов сохранится.')) return;
+    state.custom = []; state.hiddenExercises = [...defaultHiddenIds]; state.hiddenSections = [];
+    updateRemaining(); save(); deck = []; renderDictionary(); showNext();
   });
   $('copyDictionaryBtn').addEventListener('click', async () => {
     const text = allExercises().map(item => `${item.word} | ${maskFor(item)} | ${item.wrong}${item.hint ? ` | ${item.hint}` : ''}`).join('\n');
     try { await navigator.clipboard.writeText(text); $('searchInfo').textContent = 'Пропуски скопированы в буфер обмена.'; }
     catch { $('searchInfo').textContent = 'Не удалось скопировать. Разрешите доступ к буферу обмена в браузере.'; }
   });
-  specialCases(); updateStats(); showModeSelection();
+  specialCases(); updateStats(); updateRemaining(); showModeSelection();
 })();

@@ -15,6 +15,7 @@ p { margin: 0 0 12px; }
 .tab-content[hidden] { display: none; }
 .panel { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
 .training-settings { margin-bottom: 20px; }
+.remaining-count { margin: -6px 0 14px; color: #5b2ca5; font-weight: 600; }
 .settings-options { display: flex; flex-wrap: wrap; gap: 12px 20px; }
 .settings-options label { display: flex; align-items: center; gap: 7px; cursor: pointer; }
 .settings-options input { width: 18px; height: 18px; margin: 0; accent-color: #6a11cb; }

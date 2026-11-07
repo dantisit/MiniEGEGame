@@ -52,28 +52,33 @@ test('словарь содержит уникальные русские сло
   }
 });
 
-test('размеченные пропуски и неверные варианты сверены с каждым исходным словом', () => {
+test('новая таблица: все 454 пропуска совпадают со словами, источником и флагами скрытия', () => {
   const context = vm.createContext({});
   vm.runInContext(readFileSync(path.join(root, 'src/data/words.js'), 'utf8'), context);
   vm.runInContext(readFileSync(path.join(root, 'src/data/exercises.js'), 'utf8'), context);
-  const words = vm.runInContext('DEFAULT_WORDS', context);
+  const words = new Set(vm.runInContext('DEFAULT_WORDS', context).map(item => item.word));
   const exercises = vm.runInContext('DEFAULT_EXERCISES', context);
-  assert.equal(exercises.length, 802);
-  assert.deepEqual(new Set(exercises.map(([word]) => word)), new Set(words.map(item => item.word)));
-  for (const [word, mask, wrong] of exercises) {
+  const source = readFileSync(path.join(root, 'src/data/spelling-table.tsv'), 'utf8').trim().split('\n').slice(1)
+    .map(line => { const [word, mask, wrong, hidden] = line.split('\t');
+      return [word.replace(/\s+\([^)]*\)$/, ''), mask.replace(/\s+\([^)]*\)$/, ''), wrong, Number(hidden)]; });
+  assert.deepEqual(Array.from(exercises, row => Array.from(row)), source);
+  assert.equal(exercises.length, 454);
+  assert.equal(new Set(exercises.map(([word]) => word)).size, 315);
+  assert.equal(exercises.filter(([, , , hidden]) => hidden).length, 145);
+  assert.equal(new Set(exercises.map(([word, mask]) => `${word}/${mask}`)).size, 454);
+  for (const [word, mask, wrong, hidden] of exercises) {
+    assert.ok(words.has(word), word);
     assert.equal(mask.length, word.length, word);
     assert.equal([...mask].filter(letter => letter === '_').length, 1, word);
     const position = mask.indexOf('_');
     assert.equal(mask.replace('_', word[position]), word, word);
     assert.match(wrong, /^[а-яё!]$/u, word);
-    const letter = word[position];
-    const double = !'аеёиоуыэюя'.includes(letter) && (word[position - 1] === letter || word[position + 1] === letter);
-    assert.equal(wrong === '!', double, `${word}: неверный вариант для удвоенной согласной`);
     assert.notEqual(wrong, word[position], word);
+    assert.ok(hidden === 0 || hidden === 1);
   }
-  assert.equal(exercises.filter(([, , wrong]) => wrong === '!').length, 35);
-  assert.ok(exercises.some(([word, mask, wrong]) => word === 'бюллетень' && mask === 'бюл_етень' && wrong === '!'));
-  assert.ok(exercises.some(([word, mask, wrong]) => word === 'шоссе' && mask === 'шос_е' && wrong === '!'));
+  assert.ok(exercises.some(([word, mask, wrong]) => word === 'парадокс' && mask === 'пар_докс' && wrong === 'о'));
+  assert.ok(exercises.some(([word, mask]) => word === 'университет' && mask === 'универс_тет'));
+  assert.equal(exercises.filter(([word, mask]) => word === 'оранжерея' && mask === 'оранж_рея').length, 1);
 });
 
 test('выбор буквы, проверка без повторного начисления, ввод слова и сохранение результата', async () => {
@@ -107,9 +112,9 @@ test('выбор буквы, проверка без повторного нач
 });
 
 test('для одного слова по очереди встречаются все размеченные пропуски, в том числе согласные', async () => {
-  const words = vm.runInNewContext(`${readFileSync(path.join(root, 'src/data/words.js'), 'utf8')}\nDEFAULT_WORDS`);
-  const hidden = words.filter(item => item.word !== 'апелляция').map(item => item.word);
-  const onlyOneWord = await openApp(JSON.stringify({ hidden }));
+  const exercises = vm.runInNewContext(`${readFileSync(path.join(root, 'src/data/exercises.js'), 'utf8')}\nDEFAULT_EXERCISES`);
+  const hiddenExercises = exercises.filter(([word]) => word !== 'апелляция').map(([word, mask]) => `table2-${word}-${mask}`);
+  const onlyOneWord = await openApp(JSON.stringify({ spellingTableVersion: 2, hiddenExercises }));
   try {
     const d = onlyOneWord.window.document;
     d.querySelector('#includeHiddenWords').checked = false;
@@ -135,25 +140,26 @@ test('словарь показывает каждый пропуск отдел
   try {
     const d = dom.window.document;
     d.querySelector('[data-tab="dictionary"]').click();
-    assert.equal(d.querySelectorAll('.dictionary-item').length, 783);
-    assert.match(d.querySelector('#dictionaryCount').textContent, /783 пропуска · 535 слов/);
-    d.querySelector('#dictionarySearch').value = 'апелляция';
+    assert.equal(d.querySelectorAll('.dictionary-item').length, 454);
+    assert.match(d.querySelector('#dictionaryCount').textContent, /454 пропуска · 315 слов/);
+    d.querySelector('#dictionarySearch').value = 'абитуриент';
     d.querySelector('#dictionarySearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
     const masks = [...d.querySelectorAll('.dictionary-item small')].map(node => node.textContent);
-    assert.deepEqual(masks, ['Пропуск: _пелляция · неверный вариант: о', 'Пропуск: ап_лляция · неверный вариант: и', 'Пропуск: апел_яция · неверный вариант: !']);
+    assert.deepEqual(masks, ['Пропуск: аб_туриент · неверный вариант: е', 'Пропуск: абитур_ент · неверный вариант: е']);
     d.querySelector('.dictionary-item .word-actions button').click();
     d.querySelector('#showHiddenBtn').click();
     assert.equal(d.querySelectorAll('.dictionary-item').length, 1);
-    assert.equal(JSON.parse(dom.window.localStorage.getItem('miniege-spelling-v1')).hiddenExercises.length, 1);
+    assert.equal(JSON.parse(dom.window.localStorage.getItem('miniege-spelling-v1')).hiddenExercises.length, 146);
     d.querySelector('.dictionary-item .word-actions button').click();
     assert.equal(d.querySelectorAll('.dictionary-item').length, 0);
   } finally { dom.window.close(); }
 });
 
 test('свайп в тренировке скрывает один пропуск и не стирает остальные ответы', async () => {
-  const words = vm.runInNewContext(`${readFileSync(path.join(root, 'src/data/words.js'), 'utf8')}\nDEFAULT_WORDS`);
-  const hidden = words.filter(item => !['абонемент', 'апелляция'].includes(item.word)).map(item => item.word);
-  const dom = await openApp(JSON.stringify({ hidden }));
+  const exercises = vm.runInNewContext(`${readFileSync(path.join(root, 'src/data/exercises.js'), 'utf8')}\nDEFAULT_EXERCISES`);
+  const keep = new Set(['аб_туриент', 'абитур_ент', '_пелляция', 'ап_лляция']);
+  const hiddenExercises = exercises.filter(([, mask]) => !keep.has(mask)).map(([word, mask]) => `table2-${word}-${mask}`);
+  const dom = await openApp(JSON.stringify({ spellingTableVersion: 2, hiddenExercises }));
   try {
     const d = dom.window.document;
     assert.equal(d.querySelectorAll('.word').length, 2);
@@ -165,10 +171,8 @@ test('свайп в тренировке скрывает один пропус�
     fire('pointerup', 100);
     assert.equal(d.querySelectorAll('.word').length, 1);
     assert.equal(d.querySelector('#checkBtn').disabled, false);
-    const exercises = vm.runInNewContext(`${readFileSync(path.join(root, 'src/data/exercises.js'), 'utf8')}\nDEFAULT_EXERCISES`);
-    const omitted = vm.runInNewContext(`${readFileSync(path.join(root, 'src/data/exercises.js'), 'utf8')}\nOMITTED_EXERCISE_IDS`);
-    const migrated = exercises.filter(([word], index) => !omitted.includes(index) && hidden.includes(word)).length;
-    assert.equal(JSON.parse(dom.window.localStorage.getItem('miniege-spelling-v1')).hiddenExercises.length, migrated + 1);
+    assert.equal(JSON.parse(dom.window.localStorage.getItem('miniege-spelling-v1')).hiddenExercises.length, 451);
+    assert.equal(d.querySelector('#remainingCount').textContent, 'Не скрыто пропусков: 3');
     d.querySelector('#checkBtn').click();
     assert.match(d.querySelector('#score').textContent, /\/1$/);
     d.querySelector('.hide-exercise-btn').click();
@@ -184,7 +188,7 @@ test('КД по отдельным пропускам, сортировка и �
   vm.runInContext(readFileSync(path.join(root, 'src/data/exercises.js'), 'utf8'), context);
   const exercises = vm.runInContext('DEFAULT_EXERCISES', context);
   const ids = ['_бонемент', 'аб_немент', 'абон_мент'].map(mask =>
-    `pdf-${exercises.findIndex(([word, value]) => word === 'абонемент' && value === mask)}`);
+    `table2-абонемент-${mask}`);
   const initial = {
     stats: { total: 10, correct: 7 },
     exerciseStats: {
@@ -212,9 +216,9 @@ test('КД по отдельным пропускам, сортировка и �
     assert.equal(d.querySelector('#statsResultsCount').textContent, 'Показано: 3 из 3');
     d.querySelector('#statsSearch').value = '';
     d.querySelector('#statsSearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
-    assert.equal(d.querySelector('#statsResultsCount').textContent, 'Показано: 40 из 783');
+    assert.equal(d.querySelector('#statsResultsCount').textContent, 'Показано: 40 из 454');
     d.querySelector('#statsShowMore').click();
-    assert.equal(d.querySelector('#statsResultsCount').textContent, 'Показано: 80 из 783');
+    assert.equal(d.querySelector('#statsResultsCount').textContent, 'Показано: 80 из 454');
   } finally { dom.window.close(); }
 });
 
@@ -271,6 +275,7 @@ test('пустая выборка, добавление и фильтрация 
     d.querySelector('#newWrong').value = 'р';
     d.querySelector('#addWordForm').dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
     assert.match(d.querySelector('#formMessage').textContent, /добавлено/);
+    assert.equal(d.querySelector('#remainingCount').textContent, 'Не скрыто пропусков: 310');
     d.querySelector('#showUserBtn').click();
     assert.equal(d.querySelectorAll('.dictionary-item').length, 1);
     d.getElementById('includeCustomWords').checked = true;
@@ -278,6 +283,7 @@ test('пустая выборка, добавление и фильтрация 
     assert.equal(d.querySelectorAll('.word').length, 1);
     assert.deepEqual(new Set([...d.querySelectorAll('.word .ending')].map(button => button.dataset.value)), new Set(['л', '!']));
     d.querySelector('#resetDictionaryBtn').click();
+    assert.equal(d.querySelector('#remainingCount').textContent, 'Не скрыто пропусков: 309');
     assert.equal(d.querySelectorAll('.dictionary-item').length, 0);
     assert.equal(d.querySelectorAll('.word').length, 0);
   } finally { dom.window.close(); }
@@ -464,33 +470,91 @@ test('старые и вновь добавленные слова с ё при�
   } finally { dom.window.close(); }
 });
 
-test('исправленная таблица: пустые строки пропущены, новые маски получают новую версию ID', async () => {
-  const source = readFileSync(path.join(root, 'src/data/exercises.js'), 'utf8');
-  const exercises = vm.runInNewContext(`${source}\nDEFAULT_EXERCISES`);
-  const omitted = vm.runInNewContext(`${source}\nOMITTED_EXERCISE_IDS`);
-  const revised = vm.runInNewContext(`${source}\nREVISED_MASK_IDS`);
-  assert.equal(exercises.length, 802); // исходный порядок остаётся стабильным
-  assert.equal(omitted.length, 19);
-  assert.equal(new Set(omitted).size, omitted.length);
-  assert.ok(omitted.every(id => Number.isInteger(id) && id >= 0 && id < exercises.length));
-  assert.deepEqual(Array.from(revised), [79, 248, 355, 617, 688, 689]);
-  for (const [index, mask, wrong] of [
-    [79, 'бадм_нтон', 'е'], [248, 'ин_й', 'и'], [355, 'косм_с', 'а'],
-    [617, 'режис_ёрский', '!'], [688, 'т_ория', 'а'], [689, 'т_оретический', 'и']
-  ]) assert.deepEqual(Array.from(exercises[index].slice(1)), [mask, wrong]);
-  assert.ok(omitted.includes(147)); // строка без слова/маски, с оставшейся ошибочной буквой
+test('счётчик не скрытых пропусков меняется после скрытия, возврата и сброса', async () => {
+  const dom = await openApp();
+  try {
+    const d = dom.window.document;
+    const count = () => d.querySelector('#remainingCount').textContent;
+    assert.equal(count(), 'Не скрыто пропусков: 309');
+    d.querySelector('#includeHiddenWords').checked = true;
+    d.querySelector('#includeHiddenWords').dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    assert.equal(count(), 'Не скрыто пропусков: 309'); // фильтр не меняет фактическое скрытие
+    d.querySelector('#includeHiddenWords').checked = false;
+    d.querySelector('#includeHiddenWords').dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+    d.querySelector('[data-tab="dictionary"]').click();
+    d.querySelector('#showHiddenBtn').click();
+    assert.equal(d.querySelectorAll('.dictionary-item').length, 145);
+    d.querySelector('#dictionarySearch').value = 'абонемент';
+    d.querySelector('#dictionarySearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    assert.equal(d.querySelectorAll('.dictionary-item').length, 2);
+    d.querySelector('.dictionary-item button').click();
+    assert.equal(count(), 'Не скрыто пропусков: 310');
+    const saved = dom.window.localStorage.getItem('miniege-spelling-v1');
+    assert.equal(JSON.parse(saved).spellingTableVersion, 2);
+    const restored = await openApp(saved);
+    try {
+      assert.equal(restored.window.document.querySelector('#remainingCount').textContent, 'Не скрыто пропусков: 310');
+      restored.window.document.querySelector('[data-tab="dictionary"]').click();
+      restored.window.document.querySelector('#resetDictionaryBtn').click();
+      assert.equal(restored.window.document.querySelector('#remainingCount').textContent, 'Не скрыто пропусков: 309');
+      assert.equal(JSON.parse(restored.window.localStorage.getItem('miniege-spelling-v1')).hiddenExercises.length, 145);
+    } finally { restored.window.close(); }
+  } finally { dom.window.close(); }
+});
+
+test('старые ID не попадают в новую таблицу, общий счёт и пользовательские данные сохраняются', async () => {
+  const dom = await openApp(JSON.stringify({
+    hiddenExercises: ['pdf-79'],
+    exerciseStats: { 'pdf-79': { correct: 4, wrong: 0 } },
+    stats: { total: 4, correct: 4 },
+    custom: [{ word: 'балл', section: 'Мои слова', custom: true, position: 3, wrong: 'р' }]
+  }));
+  try {
+    const d = dom.window.document;
+    assert.equal(d.querySelector('#remainingCount').textContent, 'Не скрыто пропусков: 310');
+    assert.equal(d.querySelector('#score').textContent, 'Решено: 4/4');
+    d.querySelector('[data-tab="dictionary"]').click();
+    d.querySelector('#dictionarySearch').value = 'бадминтон';
+    d.querySelector('#dictionarySearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    assert.equal(d.querySelectorAll('.dictionary-item').length, 2);
+    assert.equal(d.querySelectorAll('.dictionary-item.hidden-word').length, 1); // б_дминтон скрыт новой таблицей
+    assert.match(d.querySelector('#dictionaryList').textContent, /бадм_нтон/);
+    d.querySelector('[data-tab="statistics"]').click();
+    d.querySelector('#statsSearch').value = 'бадминтон';
+    d.querySelector('#statsSearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    assert.equal(d.querySelectorAll('.exercise-stat').length, 0);
+  } finally { dom.window.close(); }
+});
+
+test('старое скрытие целого слова переносится на все его новые пропуски', async () => {
+  const dom = await openApp(JSON.stringify({ hidden: ['абитуриент'] }));
+  try {
+    const d = dom.window.document;
+    assert.equal(d.querySelector('#remainingCount').textContent, 'Не скрыто пропусков: 307');
+    d.querySelector('[data-tab="dictionary"]').click();
+    d.querySelector('#dictionarySearch').value = 'абитуриент';
+    d.querySelector('#dictionarySearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    assert.equal(d.querySelectorAll('.dictionary-item.hidden-word').length, 2);
+  } finally { dom.window.close(); }
+});
+
+test('все 24 пропуска удвоенных согласных получают вариант !, включая строки с буквами в таблице', async () => {
+  const exercises = vm.runInNewContext(`${readFileSync(path.join(root, 'src/data/exercises.js'), 'utf8')}\nDEFAULT_EXERCISES`);
+  const doubles = exercises.filter(([word, mask]) => {
+    const i = mask.indexOf('_'), letter = word[i];
+    return /[бвгджзйклмнпрстфхцчшщ]/u.test(letter) && (word[i - 1] === letter || word[i + 1] === letter);
+  });
+  assert.equal(doubles.length, 24);
   const dom = await openApp();
   try {
     const d = dom.window.document;
     d.querySelector('[data-tab="dictionary"]').click();
-    assert.equal(d.querySelectorAll('.dictionary-item').length, 783);
-    assert.equal(d.querySelector('#dictionaryCount').textContent, '783 пропуска · 535 слов');
-    d.querySelector('#dictionarySearch').value = 'берёза';
-    d.querySelector('#dictionarySearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
-    assert.equal(d.querySelectorAll('.dictionary-item').length, 0);
-    d.querySelector('#dictionarySearch').value = 'иней';
-    d.querySelector('#dictionarySearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
-    assert.match(d.querySelector('#dictionaryList').textContent, /ин_й/);
+    const rows = [...d.querySelectorAll('.dictionary-item')];
+    for (const [word, mask] of doubles) {
+      const row = rows.find(row => row.querySelector('strong').textContent === word && row.querySelector('small').textContent.includes(`Пропуск: ${mask} ·`));
+      assert.ok(row, mask);
+      assert.match(row.querySelector('small').textContent, /неверный вариант: !$/, mask);
+    }
   } finally { dom.window.close(); }
 });
 
@@ -539,27 +603,5 @@ test('у ранее сохранённого своего пропуска ва�
     d.querySelector('#statsSearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
     assert.match(d.querySelector('.exercise-stat').textContent, /Верно: 2Ошибки: 1/);
     assert.ok(JSON.parse(dom.window.localStorage.getItem('miniege-spelling-v1')).hiddenExercises.includes(key));
-  } finally { dom.window.close(); }
-});
-
-test('исправленная позиция пропуска не наследует скрытие и статистику старого задания', async () => {
-  const dom = await openApp(JSON.stringify({
-    hiddenExercises: ['pdf-79'],
-    exerciseStats: { 'pdf-79': { correct: 4, wrong: 0 } },
-    stats: { total: 4, correct: 4 }
-  }));
-  try {
-    const d = dom.window.document;
-    d.querySelector('[data-tab="dictionary"]').click();
-    d.querySelector('#dictionarySearch').value = 'бадминтон';
-    d.querySelector('#dictionarySearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
-    assert.equal(d.querySelectorAll('.dictionary-item').length, 2);
-    assert.equal(d.querySelectorAll('.dictionary-item.hidden-word').length, 0);
-    assert.match(d.querySelector('#dictionaryList').textContent, /бадм_нтон/);
-    d.querySelector('[data-tab="statistics"]').click();
-    d.querySelector('#statsSearch').value = 'бадминтон';
-    d.querySelector('#statsSearch').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
-    assert.equal(d.querySelectorAll('.exercise-stat').length, 0);
-    assert.deepEqual(JSON.parse(dom.window.localStorage.getItem('miniege-spelling-v1')).hiddenExercises, ['pdf-79']);
   } finally { dom.window.close(); }
 });
